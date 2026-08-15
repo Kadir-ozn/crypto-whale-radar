@@ -1,329 +1,452 @@
 <!DOCTYPE html>
-<html lang="tr">
+<html lang="tr" class="dark">
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Crypto Whale Radar 🐋</title>
-    <!-- Tailwind CSS ve Chart.js CDN -->
+    <title>WhaleRadar Pro Terminal</title>
+    <!-- Tailwind CSS CDN -->
     <script src="https://cdn.tailwindcss.com"></script>
+    <!-- Chart.js CDN -->
     <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <script>
+        tailwind.config = {
+            darkMode: 'class',
+            theme: {
+                extend: {
+                    colors: {
+                        darkBg: '#0b0e14',
+                        darkCard: '#151a23',
+                        darkBorder: '#232936',
+                        whaleGreen: '#00f59b',
+                        whaleRed: '#ff3b69',
+                        accentBlue: '#3b82f6'
+                    }
+                }
+            }
+        }
+    </script>
     <style>
-        @keyframes fadeIn {
-            from { opacity: 0; transform: translateY(-8px); }
-            to { opacity: 1; transform: translateY(0); }
-        }
-        .animate-fade-in {
-            animation: fadeIn 0.25s ease-out forwards;
-        }
+        ::-webkit-scrollbar { width: 5px; height: 5px; }
+        ::-webkit-scrollbar-track { background: #0b0e14; }
+        ::-webkit-scrollbar-thumb { background: #232936; border-radius: 4px; }
+        ::-webkit-scrollbar-thumb:hover { background: #3b82f6; }
     </style>
 </head>
-<body class="bg-gray-950 text-gray-100 min-h-screen p-4 md:p-6 font-sans">
+<body class="bg-darkBg text-slate-200 font-sans h-screen flex flex-col overflow-hidden">
 
-    <div class="max-w-6xl mx-auto space-y-6">
-        
-        <!-- ÜST PANEL: Başlık, Filtreler ve Ayarlar -->
-        <header class="flex flex-col md:flex-row justify-between items-center bg-gray-900/80 backdrop-blur p-5 rounded-2xl border border-gray-800 shadow-xl gap-4">
-            <div class="flex items-center space-x-3">
-                <span class="text-3xl">🐋</span>
-                <div>
-                    <h1 class="text-xl font-black text-transparent bg-clip-text bg-gradient-to-r from-emerald-400 to-cyan-500">
-                        Crypto Whale Radar
-                    </h1>
-                    <p class="text-xs text-gray-400">Binance Canlı BTC Balina Takip Terminali</p>
-                </div>
-            </div>
-
-            <!-- Kontroller: Filtre Seçimi, Ses Butonu ve Bağlantı Durumu -->
-            <div class="flex flex-wrap items-center gap-3">
-                <!-- Filtre Seçim Butonları -->
-                <div class="flex items-center bg-gray-950 p-1 rounded-xl border border-gray-800 text-xs font-semibold">
-                    <button onclick="setThreshold(10000)" id="btn-10k" class="px-3 py-1.5 rounded-lg bg-emerald-500/20 text-emerald-400 transition-all">$10K+</button>
-                    <button onclick="setThreshold(50000)" id="btn-50k" class="px-3 py-1.5 rounded-lg text-gray-400 hover:text-white transition-all">$50K+</button>
-                    <button onclick="setThreshold(100000)" id="btn-100k" class="px-3 py-1.5 rounded-lg text-gray-400 hover:text-white transition-all">$100K+</button>
-                </div>
-
-                <!-- Ses Aç/Kapa Butonu -->
-                <button onclick="toggleAudio()" id="btn-audio" class="flex items-center space-x-1.5 bg-gray-950 hover:bg-gray-800 px-3 py-2 rounded-xl border border-gray-800 text-xs font-semibold text-gray-300 transition-colors">
-                    <span id="audio-icon">🔔</span>
-                    <span id="audio-text">Ses Açık</span>
-                </button>
-
-                <!-- Canlı Durum -->
-                <div class="flex items-center space-x-2 bg-gray-950 px-3.5 py-2 rounded-xl border border-gray-800">
-                    <span id="status-dot" class="w-2.5 h-2.5 bg-red-500 rounded-full animate-pulse"></span>
-                    <span id="status-text" class="text-xs font-semibold text-gray-400">Bağlanıyor...</span>
-                </div>
-            </div>
-        </header>
-
-        <!-- İSTATİSTİK KARTLARI (3'lü Grid) -->
-        <div class="grid grid-cols-1 md:grid-cols-3 gap-4">
-            
-            <div class="bg-gray-900 p-5 rounded-2xl border border-gray-800">
-                <span class="text-xs font-semibold text-gray-400 uppercase tracking-wider">İzlenen Balina Hacmi</span>
-                <div id="stat-total-volume" class="text-2xl font-black text-white font-mono mt-2">$0.00</div>
-                <span class="text-[11px] text-gray-500">Yakalanan tüm işlemler</span>
-            </div>
-
-            <div class="bg-gray-900 p-5 rounded-2xl border border-gray-800">
-                <span class="text-xs font-semibold text-gray-400 uppercase tracking-wider">En Büyük Tekil İşlem</span>
-                <div id="stat-max-trade" class="text-2xl font-black text-cyan-400 font-mono mt-2">$0.00</div>
-                <span id="stat-max-trade-detail" class="text-[11px] text-gray-500">Henüz kayıt yok</span>
-            </div>
-
-            <div class="bg-gray-900 p-5 rounded-2xl border border-gray-800 flex flex-col justify-between">
-                <div>
-                    <div class="flex justify-between items-center mb-1">
-                        <span class="text-xs font-semibold text-gray-400 uppercase tracking-wider">Piyasa Baskısı</span>
-                        <span id="stat-pressure-text" class="text-xs font-bold text-gray-300">%50 Alış / %50 Satış</span>
-                    </div>
-                    <div class="w-full bg-red-500/80 h-2.5 rounded-full overflow-hidden flex mt-2">
-                        <div id="pressure-buy-bar" class="bg-emerald-500 h-full transition-all duration-300" style="width: 50%"></div>
-                    </div>
-                </div>
-                <div class="flex justify-between text-[11px] text-gray-400 mt-2">
-                    <span class="text-emerald-400 font-semibold">🟢 Alışlar</span>
-                    <span class="text-red-400 font-semibold">🔴 Satışlar</span>
-                </div>
-            </div>
-
+    <!-- NAVBAR -->
+    <header class="h-14 border-b border-darkBorder bg-darkCard/80 backdrop-blur px-4 flex items-center justify-between shrink-0">
+        <div class="flex items-center gap-3">
+            <span class="text-2xl">🐋</span>
+            <h1 class="text-lg font-bold tracking-wider text-white">WHALE<span class="text-accentBlue">RADAR</span> <span class="text-xs px-2 py-0.5 rounded bg-accentBlue/20 text-accentBlue font-mono border border-accentBlue/30">PRO</span></h1>
         </div>
+        <div class="flex items-center gap-3">
+            <div id="connBadge" class="flex items-center gap-2 px-3 py-1 rounded-full text-xs font-semibold bg-red-500/10 text-red-400 border border-red-500/20">
+                <span class="w-2 h-2 rounded-full bg-red-500 animate-pulse"></span>
+                <span id="connText">Binance Bağlanıyor...</span>
+            </div>
+            <button id="soundToggle" onclick="toggleAudio()" class="px-3 py-1 bg-darkBg hover:bg-darkBorder border border-darkBorder rounded text-xs text-slate-300 transition flex items-center gap-1.5">
+                🔊 <span>Ses: Kapalı</span>
+            </button>
+        </div>
+    </header>
 
-        <!-- 2 SÜTUNLU DÜZEN: Sol Canlı Grafik, Sağ Canlı Tablo -->
-        <div class="grid grid-cols-1 lg:grid-cols-12 gap-6">
+    <!-- ANA GÖVDE -->
+    <div class="flex-1 flex overflow-hidden">
+        
+        <!-- SOL SIDEBAR -->
+        <aside class="w-60 border-r border-darkBorder bg-darkCard/50 flex flex-col shrink-0">
+            <div class="p-3 border-b border-darkBorder">
+                <input type="text" id="coinSearch" placeholder="🔍 Kripto Ara..." onkeyup="filterCoins()" class="w-full bg-darkBg border border-darkBorder rounded px-3 py-1.5 text-xs text-slate-200 focus:outline-none focus:border-accentBlue placeholder-slate-500">
+            </div>
+            <div class="p-2 border-b border-darkBorder text-[11px] text-slate-400 font-mono">
+                TAKİP EDİLEN PARİTELER
+            </div>
+            <div id="coinList" class="flex-1 overflow-y-auto p-1.5 space-y-1"></div>
+        </aside>
+
+        <!-- SAĞ PANEL -->
+        <main class="flex-1 flex flex-col p-4 gap-4 overflow-y-auto">
             
-            <!-- SOL: Canlı Fiyat Grafiği -->
-            <div class="lg:col-span-6 bg-gray-900 p-5 rounded-2xl border border-gray-800 flex flex-col justify-between shadow-xl">
-                <div class="flex justify-between items-center mb-4">
-                    <h2 class="text-xs font-bold uppercase tracking-wider text-gray-300">Canlı BTC/USDT Fiyat Eğrisi</h2>
-                    <span id="current-price-badge" class="text-xs font-mono font-bold bg-cyan-500/10 text-cyan-400 border border-cyan-500/20 px-2 py-0.5 rounded">
-                        $0.00
-                    </span>
+            <!-- KONTROL & METRİK PANELİ -->
+            <div class="grid grid-cols-1 md:grid-cols-4 gap-3 shrink-0">
+                
+                <!-- Seçili Parite -->
+                <div class="bg-darkCard p-3 rounded-lg border border-darkBorder flex items-center justify-between">
+                    <div>
+                        <div class="text-[11px] text-slate-400 font-mono">AKTİF PARİTE</div>
+                        <div id="activeSymbol" class="text-xl font-bold text-white mt-0.5">BTC / USDT</div>
+                    </div>
+                    <span id="activeCoinIcon" class="text-2xl">₿</span>
                 </div>
-                <div class="relative h-[380px] w-full">
-                    <canvas id="priceChart"></canvas>
+
+                <!-- ÖZELLEŞTİRİLEBİLİR EŞİK KONTROLÜ -->
+                <div class="bg-darkCard p-3 rounded-lg border border-darkBorder flex flex-col justify-between shadow-sm">
+                    <div class="flex justify-between items-center mb-1">
+                        <span class="text-[11px] text-slate-400 font-mono tracking-wider font-semibold">MİNİMUM EŞİK</span>
+                        <span id="activePillLabel" class="text-[10px] px-1.5 py-0.5 rounded bg-accentBlue/15 text-accentBlue font-mono font-bold border border-accentBlue/20">$50,000</span>
+                    </div>
+
+                    <!-- +/- Butonlu Input Grubu -->
+                    <div class="flex items-center bg-darkBg border border-darkBorder rounded-lg p-0.5 focus-within:border-accentBlue transition">
+                        <button onclick="adjustThreshold(-5000)" class="w-8 h-7 flex items-center justify-center rounded bg-darkCard hover:bg-darkBorder text-slate-300 hover:text-white font-bold text-sm transition active:scale-95">
+                            −
+                        </button>
+                        
+                        <div class="flex-1 flex items-center justify-center gap-0.5 px-2">
+                            <span class="text-accentBlue font-bold text-xs">$</span>
+                            <input type="text" id="thresholdDisplay" value="50,000" onchange="onManualThresholdInput(this.value)" 
+                                   class="w-full bg-transparent text-center text-sm font-bold text-white font-mono focus:outline-none tracking-wide">
+                        </div>
+
+                        <button onclick="adjustThreshold(5000)" class="w-8 h-7 flex items-center justify-center rounded bg-darkCard hover:bg-darkBorder text-slate-300 hover:text-white font-bold text-sm transition active:scale-95">
+                            +
+                        </button>
+                    </div>
+
+                    <!-- Hızlı Seçim Butonları -->
+                    <div class="grid grid-cols-4 gap-1 mt-2">
+                        <button onclick="setQuickThreshold(10000)" class="threshold-pill py-1 bg-darkBg hover:bg-darkBorder border border-darkBorder text-[10px] font-mono text-slate-300 rounded transition" data-val="10000">$10k</button>
+                        <button onclick="setQuickThreshold(50000)" class="threshold-pill py-1 bg-accentBlue text-white font-bold border border-accentBlue text-[10px] font-mono rounded shadow-sm shadow-blue-500/20" data-val="50000">$50k</button>
+                        <button onclick="setQuickThreshold(100000)" class="threshold-pill py-1 bg-darkBg hover:bg-darkBorder border border-darkBorder text-[10px] font-mono text-slate-300 rounded transition" data-val="100000">$100k</button>
+                        <button onclick="setQuickThreshold(250000)" class="threshold-pill py-1 bg-darkBg hover:bg-darkBorder border border-darkBorder text-[10px] font-mono text-slate-300 rounded transition" data-val="250000">$250k</button>
+                    </div>
+                </div>
+
+                <!-- Yakalanan Balina -->
+                <div class="bg-darkCard p-3 rounded-lg border border-darkBorder flex flex-col justify-center">
+                    <div class="text-[11px] text-slate-400 font-mono">YAKALANAN BALİNA</div>
+                    <div id="whaleCount" class="text-2xl font-bold text-white mt-0.5">0</div>
+                </div>
+
+                <!-- Toplam Balina Hacmi -->
+                <div class="bg-darkCard p-3 rounded-lg border border-darkBorder flex flex-col justify-center">
+                    <div class="text-[11px] text-slate-400 font-mono">TOPLAM BALİNA HACMİ</div>
+                    <div id="totalVolume" class="text-2xl font-bold text-whaleGreen mt-0.5">$0</div>
+                </div>
+
+            </div>
+
+            <!-- CANLI GRAFİK -->
+            <div class="bg-darkCard p-4 rounded-lg border border-darkBorder shrink-0 h-64">
+                <div class="flex justify-between items-center mb-2">
+                    <span class="text-xs font-bold text-slate-400 tracking-wider font-mono">SEÇİLEN EŞİK ÜZERİNDEKİ İŞLEM HACİMLERİ ($)</span>
+                    <span class="text-[11px] text-slate-500">Son 20 Balina Hareketi</span>
+                </div>
+                <div class="h-48">
+                    <canvas id="whaleChart"></canvas>
                 </div>
             </div>
 
-            <!-- SAĞ: Canlı İşlem Tablosu -->
-            <div class="lg:col-span-6 bg-gray-900 rounded-2xl border border-gray-800 overflow-hidden shadow-xl flex flex-col">
-                <div class="p-4 bg-gray-800/40 border-b border-gray-800 flex justify-between items-center">
-                    <h2 class="text-xs font-bold uppercase tracking-wider text-gray-300">Canlı İşlem Akışı</h2>
-                    <span id="trade-count" class="text-xs bg-gray-800 text-gray-300 px-2.5 py-1 rounded-lg border border-gray-700 font-mono">0 İşlem</span>
+            <!-- BALİNA İŞLEM TABLOSU -->
+            <div class="bg-darkCard rounded-lg border border-darkBorder flex-1 flex flex-col min-h-[300px] overflow-hidden">
+                <div class="p-3 border-b border-darkBorder flex justify-between items-center">
+                    <h3 class="text-xs font-bold text-slate-400 uppercase tracking-wider font-mono">FİLTRELENMİŞ BALİNA İŞLEM RADARI</h3>
+                    <span class="text-[11px] text-slate-500">Doğrudan Binance Canlı Yayını</span>
                 </div>
-                
-                <div class="overflow-x-auto max-h-[380px] overflow-y-auto flex-1">
-                    <table class="w-full text-left border-collapse">
-                        <thead>
-                            <tr class="text-xs uppercase bg-gray-950/80 text-gray-400 sticky top-0 backdrop-blur">
-                                <th class="p-3">Zaman</th>
-                                <th class="p-3">Yön</th>
-                                <th class="p-3">Fiyat ($)</th>
-                                <th class="p-3">Miktar</th>
-                                <th class="p-3 text-right">Tutar ($)</th>
+                <div class="flex-1 overflow-y-auto">
+                    <table class="w-full text-left text-xs font-mono">
+                        <thead class="bg-darkBg/50 text-slate-400 sticky top-0 border-b border-darkBorder">
+                            <tr>
+                                <th class="p-2.5">ZAMAN</th>
+                                <th class="p-2.5">PARİTE</th>
+                                <th class="p-2.5">TÜR</th>
+                                <th class="p-2.5">FİYAT</th>
+                                <th class="p-2.5">MİKTAR</th>
+                                <th class="p-2.5 text-right">TOPLAM TUTAR</th>
                             </tr>
                         </thead>
-                        <tbody id="whale-table-body" class="divide-y divide-gray-800/60 text-xs font-medium">
+                        <tbody id="whaleTableBody" class="divide-y divide-darkBorder">
+                            <tr id="emptyRow">
+                                <td colspan="6" class="p-8 text-center text-slate-500">Belirlenen eşik değerinin üzerinde işlem bekleniyor...</td>
+                            </tr>
                         </tbody>
                     </table>
                 </div>
             </div>
 
-        </div>
-
+        </main>
     </div>
 
-    <!-- JAVASCRIPT MOTORU -->
+    <!-- JAVASCRIPT -->
     <script>
-        let totalTrades = 0;
-        let totalVolume = 0;
-        let maxTradeValue = 0;
-        let buyVolume = 0;
-        let sellVolume = 0;
-        let currentThreshold = 10000;
-        let isAudioEnabled = true;
+        const COINS = [
+            { symbol: "BTCUSDT", name: "Bitcoin", icon: "₿" },
+            { symbol: "ETHUSDT", name: "Ethereum", icon: "Ξ" },
+            { symbol: "SOLUSDT", name: "Solana", icon: "◎" },
+            { symbol: "BNBUSDT", name: "BNB", icon: "🔶" },
+            { symbol: "XRPUSDT", name: "XRP", icon: "✕" },
+            { symbol: "AVAXUSDT", name: "Avalanche", icon: "🔺" },
+            { symbol: "LINKUSDT", name: "Chainlink", icon: "🔗" },
+            { symbol: "DOGEUSDT", name: "Dogecoin", icon: "🐕" },
+            { symbol: "ADAUSDT", name: "Cardano", icon: "₳" },
+            { symbol: "SUIUSDT", name: "Sui", icon: "💧" },
+            { symbol: "NEARUSDT", name: "Near", icon: "Ⓝ" },
+            { symbol: "ARBUSDT", name: "Arbitrum", icon: "🔵" },
+            { symbol: "OPUSDT", name: "Optimism", icon: "🔴" },
+            { symbol: "PEPEUSDT", name: "Pepe", icon: "🐸" },
+            { symbol: "SHIBUSDT", name: "Shiba Inu", icon: "🐶" }
+        ];
 
-        const statusDot = document.getElementById('status-dot');
-        const statusText = document.getElementById('status-text');
-        const tableBody = document.getElementById('whale-table-body');
-        const tradeCount = document.getElementById('trade-count');
-        const statTotalVolume = document.getElementById('stat-total-volume');
-        const statMaxTrade = document.getElementById('stat-max-trade');
-        const statMaxTradeDetail = document.getElementById('stat-max-trade-detail');
-        const statPressureText = document.getElementById('stat-pressure-text');
-        const pressureBuyBar = document.getElementById('pressure-buy-bar');
-        const currentPriceBadge = document.getElementById('current-price-badge');
+        let activeSymbol = "BTCUSDT";
+        let userThreshold = 50000;
+        let audioEnabled = false;
+        let audioCtx = null;
+        
+        const rawTradeStore = {};
+        COINS.forEach(c => { rawTradeStore[c.symbol] = []; });
 
-        // 🔊 Web Audio API ile Sentetik Ping Sesi
-        const audioCtx = new (window.AudioContext || window.webkitAudioContext)();
-        function playWhaleSound(isSell) {
-            if (!isAudioEnabled) return;
-            try {
-                if (audioCtx.state === 'suspended') {
-                    audioCtx.resume();
-                }
-                const osc = audioCtx.createOscillator();
-                const gain = audioCtx.createGain();
-                
-                // Alış için tiz pozitif ton (880Hz), Satış için bas uyarı tonu (320Hz)
-                osc.frequency.value = isSell ? 320 : 880;
-                osc.type = 'sine';
-                
-                gain.gain.setValueAtTime(0.08, audioCtx.currentTime);
-                gain.gain.exponentialRampToValueAtTime(0.0001, audioCtx.currentTime + 0.25);
-                
-                osc.connect(gain);
-                gain.connect(audioCtx.destination);
-                
-                osc.start();
-                osc.stop(audioCtx.currentTime + 0.25);
-            } catch (e) {
-                console.error("Audio error:", e);
-            }
+        function renderSidebar() {
+            const list = document.getElementById('coinList');
+            list.innerHTML = '';
+            COINS.forEach(c => {
+                const isActive = c.symbol === activeSymbol;
+                const btn = document.createElement('button');
+                btn.className = `w-full px-3 py-2.5 rounded-lg flex items-center justify-between text-xs transition coin-btn ${
+                    isActive ? 'bg-accentBlue text-white font-bold shadow-lg shadow-blue-500/20' : 'text-slate-300 hover:bg-darkBorder/60'
+                }`;
+                btn.onclick = () => selectCoin(c.symbol);
+                btn.id = `btn-${c.symbol}`;
+                btn.innerHTML = `
+                    <div class="flex items-center gap-2">
+                        <span>${c.icon}</span>
+                        <div class="text-left">
+                            <div class="leading-none">${c.symbol.replace('USDT', '')}</div>
+                            <div class="text-[10px] opacity-70 mt-0.5">${c.name}</div>
+                        </div>
+                    </div>
+                `;
+                list.appendChild(btn);
+            });
         }
 
-        function toggleAudio() {
-            isAudioEnabled = !isAudioEnabled;
-            document.getElementById('audio-icon').innerText = isAudioEnabled ? '🔔' : '🔕';
-            document.getElementById('audio-text').innerText = isAudioEnabled ? 'Ses Açık' : 'Sessiz';
-        }
-
-        function setThreshold(val) {
-            currentThreshold = val;
-            const buttons = [
-                { id: 'btn-10k', value: 10000 },
-                { id: 'btn-50k', value: 50000 },
-                { id: 'btn-100k', value: 100000 }
-            ];
-            buttons.forEach(b => {
-                const el = document.getElementById(b.id);
-                if (b.value === val) {
-                    el.className = 'px-3 py-1.5 rounded-lg bg-emerald-500/20 text-emerald-400 transition-all';
-                } else {
-                    el.className = 'px-3 py-1.5 rounded-lg text-gray-400 hover:text-white transition-all';
+        function filterCoins() {
+            const query = document.getElementById('coinSearch').value.toUpperCase();
+            COINS.forEach(c => {
+                const btn = document.getElementById(`btn-${c.symbol}`);
+                if (btn) {
+                    btn.style.display = (c.symbol.includes(query) || c.name.toUpperCase().includes(query)) ? 'flex' : 'none';
                 }
             });
         }
 
-        // 📈 Chart.js Kurulumu
-        const ctx = document.getElementById('priceChart').getContext('2d');
-        const priceChart = new Chart(ctx, {
-            type: 'line',
-            data: {
-                labels: [],
-                datasets: [{
-                    label: 'BTC Fiyatı ($)',
-                    data: [],
-                    borderColor: '#06b6d4',
-                    backgroundColor: 'rgba(6, 182, 212, 0.1)',
-                    borderWidth: 2,
-                    fill: true,
-                    tension: 0.3,
-                    pointRadius: 3,
-                    pointBackgroundColor: '#22d3ee'
-                }]
-            },
+        function selectCoin(symbol) {
+            activeSymbol = symbol;
+            const coin = COINS.find(c => c.symbol === symbol);
+            document.getElementById('activeSymbol').innerText = `${symbol.replace('USDT', '')} / USDT`;
+            document.getElementById('activeCoinIcon').innerText = coin.icon;
+            
+            renderSidebar();
+            recalculateAndRender();
+        }
+
+        function adjustThreshold(step) {
+            userThreshold = Math.max(1000, userThreshold + step);
+            syncThresholdUI();
+            recalculateAndRender();
+        }
+
+        function setQuickThreshold(val) {
+            userThreshold = val;
+            syncThresholdUI();
+            recalculateAndRender();
+        }
+
+        function onManualThresholdInput(rawVal) {
+            const cleanNum = parseFloat(rawVal.replace(/[^0-9.]/g, ''));
+            if (!isNaN(cleanNum) && cleanNum >= 1000) {
+                userThreshold = cleanNum;
+            }
+            syncThresholdUI();
+            recalculateAndRender();
+        }
+
+        function syncThresholdUI() {
+            document.getElementById('thresholdDisplay').value = userThreshold.toLocaleString('en-US');
+            document.getElementById('activePillLabel').innerText = `$${userThreshold.toLocaleString('en-US')}`;
+
+            document.querySelectorAll('.threshold-pill').forEach(btn => {
+                const btnVal = parseFloat(btn.getAttribute('data-val'));
+                if (btnVal === userThreshold) {
+                    btn.className = "threshold-pill py-1 bg-accentBlue text-white font-bold border border-accentBlue text-[10px] font-mono rounded shadow-sm shadow-blue-500/20";
+                } else {
+                    btn.className = "threshold-pill py-1 bg-darkBg hover:bg-darkBorder border border-darkBorder text-[10px] font-mono text-slate-300 rounded transition";
+                }
+            });
+        }
+
+        function recalculateAndRender() {
+            const allTrades = rawTradeStore[activeSymbol] || [];
+            const filtered = allTrades.filter(t => t.total_usd >= userThreshold);
+            
+            const totalVol = filtered.reduce((acc, t) => acc + t.total_usd, 0);
+            document.getElementById('whaleCount').innerText = filtered.length;
+            document.getElementById('totalVolume').innerText = `$${totalVol.toLocaleString('en-US', {maximumFractionDigits: 0})}`;
+
+            const tbody = document.getElementById('whaleTableBody');
+            tbody.innerHTML = '';
+            if (filtered.length === 0) {
+                tbody.innerHTML = `<tr id="emptyRow"><td colspan="6" class="p-8 text-center text-slate-500">$${userThreshold.toLocaleString()} üzerinde işlem henüz yok.</td></tr>`;
+            } else {
+                filtered.slice(0, 50).forEach(t => renderTableRow(t, false));
+            }
+
+            const chartSubset = filtered.slice(0, 20).reverse();
+            whaleChart.data.labels = chartSubset.map(t => new Date(t.timestamp).toLocaleTimeString([], {hour:'2-digit', minute:'2-digit', second:'2-digit'}));
+            whaleChart.data.datasets[0].data = chartSubset.map(t => t.total_usd);
+            whaleChart.data.datasets[0].backgroundColor = chartSubset.map(t => t.type === 'BUY' ? '#00f59b' : '#ff3b69');
+            whaleChart.update('none');
+        }
+
+        const ctx = document.getElementById('whaleChart').getContext('2d');
+        const whaleChart = new Chart(ctx, {
+            type: 'bar',
+            data: { labels: [], datasets: [{ label: 'İşlem ($)', data: [], backgroundColor: [], borderRadius: 4 }] },
             options: {
                 responsive: true,
                 maintainAspectRatio: false,
                 plugins: { legend: { display: false } },
                 scales: {
-                    x: {
-                        grid: { color: 'rgba(255, 255, 255, 0.05)' },
-                        ticks: { color: '#9ca3af', font: { size: 10 } }
-                    },
-                    y: {
-                        grid: { color: 'rgba(255, 255, 255, 0.05)' },
-                        ticks: { color: '#9ca3af', font: { size: 10 } }
-                    }
+                    x: { grid: { display: false }, ticks: { color: '#64748b', font: { size: 10 } } },
+                    y: { grid: { color: '#1e293b' }, ticks: { color: '#64748b', font: { size: 10 }, callback: v => `$${(v/1000)}k` } }
                 }
             }
         });
 
-        const socket = new WebSocket('ws://localhost:8765');
+        function toggleAudio() {
+            audioEnabled = !audioEnabled;
+            if (audioEnabled && !audioCtx) audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+            const btn = document.getElementById('soundToggle');
+            btn.innerHTML = audioEnabled ? '🔊 <span>Ses: Açık</span>' : '🔇 <span>Ses: Kapalı</span>';
+            btn.className = audioEnabled ? 'px-3 py-1 bg-accentBlue text-white rounded text-xs transition flex items-center gap-1.5' : 'px-3 py-1 bg-darkBg hover:bg-darkBorder border border-darkBorder rounded text-xs text-slate-300 transition flex items-center gap-1.5';
+        }
 
-        socket.onopen = () => {
-            statusDot.className = 'w-2.5 h-2.5 bg-emerald-500 rounded-full shadow-[0_0_8px_#10b981]';
-            statusText.innerText = 'CANLI YAYINDA';
-            statusText.className = 'text-xs font-semibold text-emerald-400';
-        };
+        function playAlertSound(type) {
+            if (!audioEnabled || !audioCtx) return;
+            try {
+                const osc = audioCtx.createOscillator();
+                const gain = audioCtx.createGain();
+                osc.connect(gain);
+                gain.connect(audioCtx.destination);
+                osc.frequency.value = type === 'BUY' ? 880 : 440;
+                gain.gain.setValueAtTime(0.08, audioCtx.currentTime);
+                gain.gain.exponentialRampToValueAtTime(0.001, audioCtx.currentTime + 0.2);
+                osc.start();
+                osc.stop(audioCtx.currentTime + 0.2);
+            } catch(e) {}
+        }
 
-        socket.onmessage = (event) => {
-            const data = JSON.parse(event.data);
+        function renderTableRow(whale, prepend = true) {
+            const tbody = document.getElementById('whaleTableBody');
+            const emptyRow = document.getElementById('emptyRow');
+            if (emptyRow) emptyRow.remove();
+
+            const isBuy = whale.type === 'BUY';
+            const tr = document.createElement('tr');
+            tr.className = `border-b border-darkBorder/40 transition hover:bg-darkBorder/30 ${isBuy ? 'bg-whaleGreen/5' : 'bg-whaleRed/5'}`;
             
-            // Fiyatı ve grafiği her gelen işlemde güncelle
-            currentPriceBadge.innerText = `$${data.price.toLocaleString('en-US')}`;
-            priceChart.data.labels.push(data.time);
-            priceChart.data.datasets[0].data.push(data.price);
-            if (priceChart.data.labels.length > 15) {
-                priceChart.data.labels.shift();
-                priceChart.data.datasets[0].data.shift();
-            }
-            priceChart.update();
-
-            // Seçili eşikten küçükse tabloya ve istatistiğe yansıtma (Filtreleme)
-            if (data.value < currentThreshold) {
-                return;
-            }
-
-            const isSell = data.type === 'SELL';
-
-            // Balina sesi çal
-            playWhaleSound(isSell);
-
-            // Sayaç ve Hacim Güncellemeleri
-            totalTrades++;
-            totalVolume += data.value;
-            tradeCount.innerText = `${totalTrades} İşlem`;
-            statTotalVolume.innerText = `$${totalVolume.toLocaleString('en-US', {minimumFractionDigits: 2, maximumFractionDigits: 2})}`;
-
-            // En Büyük İşlem Kontrolü
-            if (data.value > maxTradeValue) {
-                maxTradeValue = data.value;
-                statMaxTrade.innerText = `$${maxTradeValue.toLocaleString('en-US', {minimumFractionDigits: 2})}`;
-                statMaxTradeDetail.innerText = `${data.time} | ${data.quantity} BTC`;
-            }
-
-            // Baskı Barı
-            if (isSell) {
-                sellVolume += data.value;
-            } else {
-                buyVolume += data.value;
-            }
-            const buyRatio = Math.round((buyVolume / (buyVolume + sellVolume)) * 100);
-            pressureBuyBar.style.width = `${buyRatio}%`;
-            statPressureText.innerText = `%${buyRatio} Alış / %${100 - buyRatio} Satış`;
-
-            // Tabloya Yeni Satır Ekleme
-            const badgeColor = isSell ? 'bg-red-500/10 text-red-400 border-red-500/20' : 'bg-emerald-500/10 text-emerald-400 border-emerald-500/20';
-            const valueColor = isSell ? 'text-red-400' : 'text-emerald-400';
-
-            const row = document.createElement('tr');
-            row.className = 'animate-fade-in hover:bg-gray-800/40 transition-colors';
-            row.innerHTML = `
-                <td class="p-3 text-gray-400 font-mono text-xs">${data.time}</td>
-                <td class="p-3">
-                    <span class="px-2 py-0.5 rounded text-[10px] font-bold border ${badgeColor}">
-                        ${isSell ? '🔴 SAT' : '🟢 AL'}
-                    </span>
-                </td>
-                <td class="p-3 font-mono text-gray-200">$${data.price.toLocaleString('en-US')}</td>
-                <td class="p-3 font-mono text-gray-300">${data.quantity}</td>
-                <td class="p-3 font-mono font-bold text-right ${valueColor}">$${data.value.toLocaleString('en-US', {minimumFractionDigits: 2})}</td>
+            const time = new Date(whale.timestamp).toLocaleTimeString();
+            tr.innerHTML = `
+                <td class="p-2.5 text-slate-400">${time}</td>
+                <td class="p-2.5 font-bold text-slate-200">${whale.symbol.replace('USDT', '')}</td>
+                <td class="p-2.5"><span class="px-1.5 py-0.5 rounded text-[10px] font-bold ${isBuy ? 'bg-whaleGreen/20 text-whaleGreen' : 'bg-whaleRed/20 text-whaleRed'}">${whale.type}</span></td>
+                <td class="p-2.5 font-bold text-slate-200">$${whale.price.toLocaleString()}</td>
+                <td class="p-2.5 text-slate-400">${whale.quantity.toFixed(3)}</td>
+                <td class="p-2.5 text-right font-bold ${isBuy ? 'text-whaleGreen' : 'text-whaleRed'}">$${whale.total_usd.toLocaleString('en-US', {maximumFractionDigits: 0})}</td>
             `;
 
-            tableBody.insertBefore(row, tableBody.firstChild);
-
-            if (tableBody.children.length > 50) {
-                tableBody.removeChild(tableBody.lastChild);
+            if (prepend) {
+                tbody.insertBefore(tr, tbody.firstChild);
+                if (tbody.children.length > 50) tbody.removeChild(tbody.lastChild);
+            } else {
+                tbody.appendChild(tr);
             }
-        };
+        }
 
-        socket.onclose = () => {
-            statusDot.className = 'w-2.5 h-2.5 bg-red-500 rounded-full';
-            statusText.innerText = 'BAĞLANTI KOPTU';
-            statusText.className = 'text-xs font-semibold text-red-500';
-        };
+        // Doğrudan Binance Combined WebSocket Bağlantısı
+        function initWebSocket() {
+            const badge = document.getElementById('connBadge');
+            const text = document.getElementById('connText');
+
+            const streams = COINS.map(c => `${c.symbol.toLowerCase()}@aggTrade`).join('/');
+            const binanceUrl = `wss://stream.binance.com:9443/stream?streams=${streams}`;
+
+            const ws = new WebSocket(binanceUrl);
+
+            ws.onopen = () => {
+                badge.className = "flex items-center gap-2 px-3 py-1 rounded-full text-xs font-semibold bg-emerald-500/10 text-emerald-400 border border-emerald-500/20";
+                badge.children[0].className = "w-2 h-2 rounded-full bg-emerald-500";
+                text.innerText = "Binance Canlı Yayında";
+            };
+
+            ws.onmessage = (event) => {
+                const msg = JSON.parse(event.data);
+                const payload = msg.data;
+                if (!payload || !payload.s) return;
+
+                const symbol = payload.s;
+                const price = parseFloat(payload.p);
+                const qty = parseFloat(payload.q);
+                const total_usd = price * qty;
+
+                // 1000$ altı küçük işlemleri hafızayı şişirmemek için geç
+                if (total_usd < 1000) return;
+
+                const isBuyerMaker = payload.m;
+                const tradeType = isBuyerMaker ? "SELL" : "BUY";
+
+                const whale = {
+                    symbol: symbol,
+                    price: price,
+                    quantity: qty,
+                    total_usd: total_usd,
+                    type: tradeType,
+                    timestamp: payload.T
+                };
+
+                const store = rawTradeStore[whale.symbol];
+                if (!store) return;
+
+                store.unshift(whale);
+                if (store.length > 500) store.pop();
+
+                // Eğer aktif seçili coinin işlem tutarı belirlenen eşikten büyükse canlı bas
+                if (whale.symbol === activeSymbol && whale.total_usd >= userThreshold) {
+                    const currentCount = parseInt(document.getElementById('whaleCount').innerText) || 0;
+                    document.getElementById('whaleCount').innerText = currentCount + 1;
+
+                    const curVolText = document.getElementById('totalVolume').innerText.replace(/[^0-9.-]+/g, "");
+                    const currentVol = parseFloat(curVolText) || 0;
+                    document.getElementById('totalVolume').innerText = `$${(currentVol + whale.total_usd).toLocaleString('en-US', {maximumFractionDigits: 0})}`;
+
+                    renderTableRow(whale, true);
+
+                    const timeStr = new Date(whale.timestamp).toLocaleTimeString([], {hour: '2-digit', minute:'2-digit', second:'2-digit'});
+                    whaleChart.data.labels.push(timeStr);
+                    whaleChart.data.datasets[0].data.push(whale.total_usd);
+                    whaleChart.data.datasets[0].backgroundColor.push(whale.type === 'BUY' ? '#00f59b' : '#ff3b69');
+
+                    if (whaleChart.data.labels.length > 20) {
+                        whaleChart.data.labels.shift();
+                        whaleChart.data.datasets[0].data.shift();
+                        whaleChart.data.datasets[0].backgroundColor.shift();
+                    }
+                    whaleChart.update('none');
+
+                    playAlertSound(whale.type);
+                }
+            };
+
+            ws.onclose = () => {
+                badge.className = "flex items-center gap-2 px-3 py-1 rounded-full text-xs font-semibold bg-red-500/10 text-red-400 border border-red-500/20";
+                badge.children[0].className = "w-2 h-2 rounded-full bg-red-500 animate-pulse";
+                text.innerText = "Yeniden Bağlanıyor...";
+                setTimeout(initWebSocket, 3000);
+            };
+        }
+
+        renderSidebar();
+        initWebSocket();
     </script>
 </body>
 </html>
