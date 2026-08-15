@@ -7,23 +7,37 @@ import websockets
 from http.server import HTTPServer, BaseHTTPRequestHandler
 import threading
 
-# Render ücretsiz web servisi kontrolü için mini sunucu
-class SimpleHandler(BaseHTTPRequestHandler):
+# ----------------------------------------------------
+# RENDER HEALTH CHECK HTTP SUNUCUSU (PORT BINDING)
+# ----------------------------------------------------
+class HealthCheckHandler(BaseHTTPRequestHandler):
     def do_GET(self):
         self.send_response(200)
+        self.send_header("Content-type", "text/plain; charset=utf-8")
         self.end_headers()
         self.wfile.write(b"WhaleRadar 7/24 Cloud Bot Aktif!")
 
-def run_health_server():
-    port = int(os.getenv("PORT", 8080))
-    server = HTTPServer(("0.0.0.0", port), SimpleHandler)
+    def log_message(self, format, *args):
+        # Render loglarını gereksiz HTTP GET loglarıyla doldurmamak için
+        return
+
+def start_http_server():
+    # Render varsayılan olarak PORT ortam değişkenini atar, yoksa 10000 kullanır
+    port = int(os.environ.get("PORT", 10000))
+    server = HTTPServer(("0.0.0.0", port), HealthCheckHandler)
+    print(f"[Render HTTP] 0.0.0.0:{port} portu başarıyla dinleniyor (Live)")
     server.serve_forever()
 
-# Ortam Değişkenleri
+# HTTP sunucusunu ana döngü başlamadan önce ayrı bir thread'de hemen başlatıyoruz
+http_thread = threading.Thread(target=start_http_server, daemon=True)
+http_thread.start()
+
+# ----------------------------------------------------
+# BOT VE BINANCE MOTORU
+# ----------------------------------------------------
 TELEGRAM_BOT_TOKEN = os.getenv("TELEGRAM_BOT_TOKEN", "8623857901:AAH2mMnEC4qMjG3fdpimhZyA4bFDgTqvugM")
 TELEGRAM_CHAT_ID = os.getenv("TELEGRAM_CHAT_ID", "")
 
-# Bot Durum Hafızası
 bot_state = {
     "enabled": True,
     "threshold": 250000,
@@ -128,7 +142,7 @@ async def telegram_poller_task():
     while True:
         try:
             if TELEGRAM_BOT_TOKEN and TELEGRAM_CHAT_ID:
-                url = f"https://api.telegram.org/bot${TELEGRAM_BOT_TOKEN}/getUpdates?offset={bot_state['last_update_id'] + 1}&timeout=5"
+                url = f"https://api.telegram.org/bot{TELEGRAM_BOT_TOKEN}/getUpdates?offset={bot_state['last_update_id'] + 1}&timeout=5"
                 res = requests.get(url, timeout=10).json()
                 if res.get("ok") and res.get("result"):
                     for update in res["result"]:
@@ -151,6 +165,7 @@ async def binance_websocket_task():
     while True:
         try:
             async with websockets.connect(ws_url, ping_interval=20, ping_timeout=20) as ws:
+                print("[Binance WS] Canlı akışa bağlanıldı.")
                 while True:
                     msg = await ws.recv()
                     data = json.loads(msg).get("data")
@@ -168,13 +183,13 @@ async def binance_websocket_task():
                         if now - bot_state["last_alert_time"] >= 2:
                             bot_state["last_alert_time"] = now
                             icon = "🟢 ALIM" if trade_type == "BUY" else "🔴 SATIM"
-                            alert_msg = f"🐋 <b>7/24 CLOUD BALİNA ALARMI!</b>\n\n<b>Parite:</b> ${symbol}\n<b>Tür:</b> {icon}\n<b>Tutar:</b> ${total_usd:,.0f}\n<b>Fiyat:</b> ${price:,.2f}"
+                            alert_msg = f"🐋 <b>7/24 CLOUD BALİNA ALARMI!</b>\n\n<b>Parite:</b> {symbol}\n<b>Tür:</b> {icon}\n<b>Tutar:</b> ${total_usd:,.0f}\n<b>Fiyat:</b> ${price:,.2f}"
                             send_telegram_msg(alert_msg)
-        except:
+        except Exception as e:
+            print(f"[Binance Hatası] {e}. Yeniden bağlanıyor...")
             await asyncio.sleep(3)
 
 async def main():
-    threading.Thread(target=run_health_server, daemon=True).start()
     send_telegram_msg("🚀 <b>WhaleRadar 7/24 Bulut Servisi Başlatıldı!</b>\nBilgisayar kapalıyken de çalışır.")
     await asyncio.gather(telegram_poller_task(), binance_websocket_task())
 
