@@ -11,8 +11,8 @@ TELEGRAM_CHAT_ID = os.getenv("TELEGRAM_CHAT_ID", "").strip()
 
 bot_state = {
     "enabled": True,
-    "threshold": 250000,
-    "side_filter": "ALL",
+    "threshold": 100000,       # Varsayılan $100,000
+    "side_filter": "ALL",      # ALL, BUY_ONLY, SELL_ONLY
     "last_update_id": 0,
     "last_alert_time": 0
 }
@@ -84,12 +84,34 @@ def parse_smart_amount(text):
     except Exception:
         return None
 
+def get_control_keyboard():
+    """Gelişmiş ayarlanabilir eşik buton menüsü."""
+    return [
+        [
+            {"text": "🛑 Durdur", "callback_data": "cmd_stop"},
+            {"text": "▶️ Başlat", "callback_data": "cmd_start"}
+        ],
+        [
+            {"text": "🎯 $10k", "callback_data": "cmd_set_10k"},
+            {"text": "🎯 $50k", "callback_data": "cmd_set_50k"},
+            {"text": "🎯 $100k", "callback_data": "cmd_set_100k"}
+        ],
+        [
+            {"text": "🎯 $250k", "callback_data": "cmd_set_250k"},
+            {"text": "🎯 $500k", "callback_data": "cmd_set_500k"},
+            {"text": "🎯 $1M", "callback_data": "cmd_set_1m"}
+        ],
+        [
+            {"text": "📊 Durum", "callback_data": "cmd_status"},
+            {"text": "🔄 Sıfırla ($100k)", "callback_data": "cmd_reset"}
+        ]
+    ]
+
 # ----------------------------------------------------
-# 3. TELEFON KOMUTLARINI İŞLEME MOTORU
+# 3. KOMUT & EŞİK İŞLEME MOTORU
 # ----------------------------------------------------
 def handle_telegram_command(cmd_text, sender_id):
     global bot_state, TELEGRAM_CHAT_ID
-    # Eğer ortam değişkeninde chat ID boşsa, ilk mesaj atan kişiyi sahip olarak kaydet
     if not TELEGRAM_CHAT_ID:
         TELEGRAM_CHAT_ID = str(sender_id)
 
@@ -97,65 +119,85 @@ def handle_telegram_command(cmd_text, sender_id):
     if c.startswith("/"):
         c = c[1:].strip()
 
+    # Durdur
     if c in ["dur", "stop", "durdur", "kapat", "cmd_stop"]:
         bot_state["enabled"] = False
-        send_telegram_msg("🛑 <b>WhaleRadar Bulut Servisi Susturuldu!</b>\nTekrar açmak için <code>baslat</code> yazın.", target_chat_id=sender_id)
+        send_telegram_msg("🛑 <b>WhaleRadar Susturuldu!</b>\nBildirimler durduruldu. Başlatmak için <code>baslat</code> yazın.", target_chat_id=sender_id)
 
+    # Başlat
     elif c in ["baslat", "start", "ac", "calistir", "cmd_start"]:
         bot_state["enabled"] = True
-        send_telegram_msg(f"▶️ <b>WhaleRadar 7/24 Bulut Aktif!</b>\nAlarm Eşiği: <b>${bot_state['threshold']:,.0f}</b>", target_chat_id=sender_id)
+        send_telegram_msg(f"▶️ <b>WhaleRadar Aktif!</b>\nAktif Eşik: <b>${bot_state['threshold']:,.0f}</b>", target_chat_id=sender_id)
 
+    # Sıfırla
     elif c in ["sifirla", "reset", "cmd_reset"]:
         bot_state["enabled"] = True
-        bot_state["threshold"] = 250000
+        bot_state["threshold"] = 100000
         bot_state["side_filter"] = "ALL"
-        send_telegram_msg("🔄 <b>WhaleRadar Fabrika Ayarlarına Sıfırlandı!</b>\n\n• Durum: 🟢 Aktif\n• Alarm Limiti: $250,000\n• Filtre: Alış + Satış", target_chat_id=sender_id)
+        send_telegram_msg("🔄 <b>Ayarlar Sıfırlandı!</b>\n\n• Durum: 🟢 Aktif\n• Alarm Eşiği: <b>$100,000</b>", target_chat_id=sender_id)
 
+    # Menü / Kumanda
     elif c in ["menu", "kumanda", "yardim", "help"]:
-        kb = [
-            [{"text": "🛑 Durdur", "callback_data": "cmd_stop"}, {"text": "▶️ Başlat", "callback_data": "cmd_start"}],
-            [{"text": "🎯 $100k", "callback_data": "cmd_100k"}, {"text": "🎯 $250k", "callback_data": "cmd_250k"}, {"text": "🎯 $500k", "callback_data": "cmd_500k"}],
-            [{"text": "📊 Durum", "callback_data": "cmd_status"}, {"text": "🔄 Sıfırla", "callback_data": "cmd_reset"}]
-        ]
-        send_telegram_msg("🎮 <b>WHALERADAR TELEFON KUMANDASI</b>", target_chat_id=sender_id, inline_keyboard=kb)
+        msg = (
+            f"🎮 <b>WHALERADAR KONTROL MERKEZİ</b>\n\n"
+            f"• <b>Mevcut Eşik:</b> <code>${bot_state['threshold']:,.0f}</code>\n"
+            f"• <b>Durum:</b> {'🟢 Aktif' if bot_state['enabled'] else '🔴 Kapalı'}\n\n"
+            f"Hızlı eşik seçmek için aşağıdaki butonlara basabilir veya serbestçe <code>esik 75k</code>, <code>esik 300000</code> yazabilirsiniz:"
+        )
+        send_telegram_msg(msg, target_chat_id=sender_id, inline_keyboard=get_control_keyboard())
 
+    # Durum Raporu
     elif c in ["durum", "status", "rapor", "cmd_status"]:
         status_text = (
-            f"☁️ <b>7/24 BULUT DURUM RAPORU</b>\n\n"
-            f"• <b>Durum:</b> {'🟢 AKTİF (7/24 ÇALIŞIYOR)' if bot_state['enabled'] else '🔴 SUSTURULDU'}\n"
-            f"• <b>Alarm Eşiği:</b> ${bot_state['threshold']:,.0f}\n"
-            f"• <b>İzlenen Pariteler:</b> 15 Kripto Parite\n"
+            f"☁️ <b>7/24 RADAR DURUM RAPORU</b>\n\n"
+            f"• <b>Durum:</b> {'🟢 AKTİF (7/24)' if bot_state['enabled'] else '🔴 SUSTURULDU'}\n"
+            f"• <b>Aktif Alarm Eşiği:</b> <b>${bot_state['threshold']:,.0f}</b>\n"
+            f"• <b>İzlenen Pariteler:</b> 15 Büyük Kripto\n"
             f"• <b>Sunucu:</b> Render Cloud Engine"
         )
         send_telegram_msg(status_text, target_chat_id=sender_id)
 
-    elif c == "cmd_100k":
+    # Buton Eşikleri
+    elif c == "cmd_set_10k":
+        bot_state["threshold"] = 10000
+        send_telegram_msg("🎯 <b>Alarm eşiği ayarlandı:</b> $10,000", target_chat_id=sender_id)
+
+    elif c == "cmd_set_50k":
+        bot_state["threshold"] = 50000
+        send_telegram_msg("🎯 <b>Alarm eşiği ayarlandı:</b> $50,000", target_chat_id=sender_id)
+
+    elif c == "cmd_set_100k":
         bot_state["threshold"] = 100000
-        send_telegram_msg("🎯 <b>Alarm eşiği:</b> $100,000", target_chat_id=sender_id)
+        send_telegram_msg("🎯 <b>Alarm eşiği ayarlandı:</b> $100,000", target_chat_id=sender_id)
 
-    elif c == "cmd_250k":
+    elif c == "cmd_set_250k":
         bot_state["threshold"] = 250000
-        send_telegram_msg("🎯 <b>Alarm eşiği:</b> $250,000", target_chat_id=sender_id)
+        send_telegram_msg("🎯 <b>Alarm eşiği ayarlandı:</b> $250,000", target_chat_id=sender_id)
 
-    elif c == "cmd_500k":
+    elif c == "cmd_set_500k":
         bot_state["threshold"] = 500000
-        send_telegram_msg("🎯 <b>Alarm eşiği:</b> $500,000", target_chat_id=sender_id)
+        send_telegram_msg("🎯 <b>Alarm eşiği ayarlandı:</b> $500,000", target_chat_id=sender_id)
 
-    elif c.startswith("esik") or c.startswith("limit") or c.startswith("threshold"):
+    elif c == "cmd_set_1m":
+        bot_state["threshold"] = 1000000
+        send_telegram_msg("🎯 <b>Alarm eşiği ayarlandı:</b> $1,000,000 (Mega Balina)", target_chat_id=sender_id)
+
+    # Serbest Metin Eşik Girişi (Örn: "esik 25k", "limit 150k", "50000", "esik 2.5m")
+    elif c.startswith("esik") or c.startswith("limit") or c.startswith("threshold") or parse_smart_amount(c):
         raw_val = c.replace("esik", "").replace("limit", "").replace("threshold", "").strip()
         parsed = parse_smart_amount(raw_val)
         if parsed and parsed >= 1000:
             bot_state["threshold"] = parsed
-            send_telegram_msg(f"🎯 <b>Alarm eşiği:</b> ${parsed:,.0f}", target_chat_id=sender_id)
+            send_telegram_msg(f"🎯 <b>Alarm eşiği başarıyla ayarlandı:</b> ${parsed:,.0f}", target_chat_id=sender_id)
         else:
-            send_telegram_msg("⚠️ Geçersiz limit. Örn: <code>esik 100k</code>", target_chat_id=sender_id)
+            send_telegram_msg("⚠️ Geçersiz limit formatı. Minimum $1,000 olmalıdır.\nÖrnekler: <code>esik 25k</code>, <code>esik 150000</code>, <code>esik 1.5m</code>", target_chat_id=sender_id)
 
 # ----------------------------------------------------
-# 4. TELEGRAM GELEN MESAJ DİNLEYİCİ (POLLER)
+# 4. TELEGRAM POLLER
 # ----------------------------------------------------
 async def telegram_poller_task():
     global bot_state
-    print("[Telegram Poller] 7/24 Dinleme Başlatıldı...")
+    print("[Telegram Poller] Dinleme Aktif...")
     while True:
         try:
             url = f"https://api.telegram.org/bot{TELEGRAM_BOT_TOKEN}/getUpdates?offset={bot_state['last_update_id'] + 1}&timeout=10"
@@ -164,24 +206,21 @@ async def telegram_poller_task():
                 for update in res["result"]:
                     bot_state["last_update_id"] = update["update_id"]
 
-                    # 1. Buton Tıklaması
                     if "callback_query" in update:
                         cb = update["callback_query"]
                         sender_id = str(cb["from"]["id"])
                         handle_telegram_command(cb["data"], sender_id)
 
-                    # 2. Metin Mesajı
                     elif "message" in update and "text" in update["message"]:
                         msg = update["message"]
                         sender_id = str(msg["from"]["id"])
                         handle_telegram_command(msg["text"], sender_id)
-        except Exception as e:
-            # Hata olsa bile döngü kopmaz
+        except Exception:
             pass
         await asyncio.sleep(1)
 
 # ----------------------------------------------------
-# 5. BINANCE WEBSOCKET AKIŞI
+# 5. BINANCE WEBSOCKET
 # ----------------------------------------------------
 async def binance_websocket_task():
     global bot_state
@@ -191,7 +230,7 @@ async def binance_websocket_task():
     while True:
         try:
             async with websockets.connect(ws_url, ping_interval=20, ping_timeout=20) as ws:
-                print("[Binance WS] Canlı akışa bağlanıldı.")
+                print("[Binance WS] Canlı akış aktif.")
                 while True:
                     msg = await ws.recv()
                     data = json.loads(msg).get("data")
@@ -211,7 +250,7 @@ async def binance_websocket_task():
                             bot_state["last_alert_time"] = now
                             icon = "🟢 ALIM" if trade_type == "BUY" else "🔴 SATIM"
                             alert_msg = (
-                                f"🐋 <b>7/24 CLOUD BALİNA ALARMI!</b>\n\n"
+                                f"🐋 <b>BALİNA ALARMI (>${bot_state['threshold']/1000:,.0f}k)</b>\n\n"
                                 f"<b>Parite:</b> {symbol}\n"
                                 f"<b>Tür:</b> {icon}\n"
                                 f"<b>Tutar:</b> ${total_usd:,.0f}\n"
@@ -226,7 +265,7 @@ async def binance_websocket_task():
 # ----------------------------------------------------
 async def main():
     if TELEGRAM_CHAT_ID:
-        send_telegram_msg("🚀 <b>WhaleRadar 7/24 Bulut Servisi Başlatıldı!</b>\nKomutlar aktif.")
+        send_telegram_msg("🚀 <b>WhaleRadar 7/24 Bulut Servisi Başlatıldı!</b>\nAyarlanabilir eşik kontrolü aktif. Menü için <code>menu</code> yazın.")
     await asyncio.gather(
         start_render_health_server(),
         telegram_poller_task(),
