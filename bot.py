@@ -15,7 +15,7 @@ from http.server import HTTPServer, BaseHTTPRequestHandler
 # ----------------------------------------------------
 PORT = int(os.environ.get("PORT", 10000))
 # Yeni Token'ı Render Environment'tan alır, yoksa buradaki değeri kullanır
-TELEGRAM_BOT_TOKEN = os.getenv("TELEGRAM_BOT_TOKEN", "8623857901:AAH2mMnEC4qMjG3fdpimhZyA4bFDgTqvugM").strip()
+TELEGRAM_BOT_TOKEN = os.getenv("TELEGRAM_BOT_TOKEN", "8921763189:AAHX71Lw61KhUugdaa3tMSyTSbEHwB6Vj68").strip()
 TELEGRAM_CHAT_ID = os.getenv("TELEGRAM_CHAT_ID", "").strip()
 
 CONFIG_FILE = "bot_state_config.json"
