@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>WhaleRadar Pro Terminal</title>
+    <title>WhaleRadar Pro Terminal | Spot & Liquidations</title>
     <!-- Tailwind CSS CDN -->
     <script src="https://cdn.tailwindcss.com"></script>
     <!-- Chart.js CDN -->
@@ -14,12 +14,13 @@
             theme: {
                 extend: {
                     colors: {
-                        darkBg: '#0b0e14',
-                        darkCard: '#151a23',
-                        darkBorder: '#232936',
+                        darkBg: '#090d16',
+                        darkCard: '#131926',
+                        darkBorder: '#20293a',
                         whaleGreen: '#00f59b',
                         whaleRed: '#ff3b69',
-                        accentBlue: '#3b82f6'
+                        accentBlue: '#3b82f6',
+                        liqOrange: '#f59e0b'
                     }
                 }
             }
@@ -27,26 +28,43 @@
     </script>
     <style>
         ::-webkit-scrollbar { width: 5px; height: 5px; }
-        ::-webkit-scrollbar-track { background: #0b0e14; }
-        ::-webkit-scrollbar-thumb { background: #232936; border-radius: 4px; }
+        ::-webkit-scrollbar-track { background: #090d16; }
+        ::-webkit-scrollbar-thumb { background: #20293a; border-radius: 4px; }
         ::-webkit-scrollbar-thumb:hover { background: #3b82f6; }
     </style>
 </head>
 <body class="bg-darkBg text-slate-200 font-sans h-screen flex flex-col overflow-hidden">
 
-    <!-- NAVBAR -->
-    <header class="h-14 border-b border-darkBorder bg-darkCard/80 backdrop-blur px-4 flex items-center justify-between shrink-0">
+    <!-- ÜST NAVBAR -->
+    <header class="h-14 border-b border-darkBorder bg-darkCard/90 backdrop-blur px-4 flex items-center justify-between shrink-0">
         <div class="flex items-center gap-3">
-            <span class="text-2xl">🐋</span>
-            <h1 class="text-lg font-bold tracking-wider text-white">WHALE<span class="text-accentBlue">RADAR</span> <span class="text-xs px-2 py-0.5 rounded bg-accentBlue/20 text-accentBlue font-mono border border-accentBlue/30">PRO</span></h1>
-        </div>
-        <div class="flex items-center gap-3">
-            <div id="connBadge" class="flex items-center gap-2 px-3 py-1 rounded-full text-xs font-semibold bg-red-500/10 text-red-400 border border-red-500/20">
-                <span class="w-2 h-2 rounded-full bg-red-500 animate-pulse"></span>
-                <span id="connText">Binance Bağlanıyor...</span>
+            <span class="text-2xl animate-bounce">🐋</span>
+            <div>
+                <h1 class="text-base font-bold tracking-wider text-white leading-none">WHALE<span class="text-accentBlue">RADAR</span> <span class="text-[10px] px-1.5 py-0.5 rounded bg-accentBlue/20 text-accentBlue font-mono border border-accentBlue/30">TERMINAL v2</span></h1>
+                <p class="text-[10px] text-slate-400 font-mono mt-0.5">Spot Balina & Kaldıraç Likidasyon Akışı</p>
             </div>
-            <button id="soundToggle" onclick="toggleAudio()" class="px-3 py-1 bg-darkBg hover:bg-darkBorder border border-darkBorder rounded text-xs text-slate-300 transition flex items-center gap-1.5">
+        </div>
+
+        <div class="flex items-center gap-2">
+            <!-- Bağlantı Durumu -->
+            <div id="connBadge" class="flex items-center gap-1.5 px-2.5 py-1 rounded-full text-[11px] font-semibold bg-red-500/10 text-red-400 border border-red-500/20">
+                <span class="w-2 h-2 rounded-full bg-red-500 animate-pulse"></span>
+                <span id="connText">Bağlanıyor...</span>
+            </div>
+
+            <!-- Masaüstü Bildirim Butonu -->
+            <button id="notifyBtn" onclick="requestNotificationPerm()" class="px-2.5 py-1 bg-darkBg hover:bg-darkBorder border border-darkBorder rounded text-xs text-slate-300 transition flex items-center gap-1">
+                🔔 <span id="notifyText">Bildirim: Kapalı</span>
+            </button>
+
+            <!-- Ses Butonu -->
+            <button id="soundToggle" onclick="toggleAudio()" class="px-2.5 py-1 bg-darkBg hover:bg-darkBorder border border-darkBorder rounded text-xs text-slate-300 transition flex items-center gap-1">
                 🔊 <span>Ses: Kapalı</span>
+            </button>
+
+            <!-- CSV Dışa Aktar Butonu -->
+            <button onclick="exportToCSV()" class="px-2.5 py-1 bg-accentBlue/10 hover:bg-accentBlue/20 border border-accentBlue/30 rounded text-xs text-accentBlue font-semibold transition flex items-center gap-1">
+                📥 <span>CSV İndir</span>
             </button>
         </div>
     </header>
@@ -54,121 +72,152 @@
     <!-- ANA GÖVDE -->
     <div class="flex-1 flex overflow-hidden">
         
-        <!-- SOL SIDEBAR -->
-        <aside class="w-60 border-r border-darkBorder bg-darkCard/50 flex flex-col shrink-0">
+        <!-- SOL SIDEBAR (TAKİP LİSTESİ) -->
+        <aside class="w-60 border-r border-darkBorder bg-darkCard/40 flex flex-col shrink-0">
             <div class="p-3 border-b border-darkBorder">
                 <input type="text" id="coinSearch" placeholder="🔍 Kripto Ara..." onkeyup="filterCoins()" class="w-full bg-darkBg border border-darkBorder rounded px-3 py-1.5 text-xs text-slate-200 focus:outline-none focus:border-accentBlue placeholder-slate-500">
             </div>
-            <div class="p-2 border-b border-darkBorder text-[11px] text-slate-400 font-mono">
-                TAKİP EDİLEN PARİTELER
+            <div class="p-2 border-b border-darkBorder flex justify-between text-[10px] text-slate-400 font-mono">
+                <span>PARİTE</span>
+                <span>SEÇ</span>
             </div>
             <div id="coinList" class="flex-1 overflow-y-auto p-1.5 space-y-1"></div>
         </aside>
 
-        <!-- SAĞ PANEL -->
-        <main class="flex-1 flex flex-col p-4 gap-4 overflow-y-auto">
+        <!-- ORTA & SAĞ TERMİNAL ALANI -->
+        <main class="flex-1 flex flex-col p-3 gap-3 overflow-y-auto">
             
-            <!-- KONTROL & METRİK PANELİ -->
+            <!-- 1. BİLGİ VE KONTROL KARTLARI -->
             <div class="grid grid-cols-1 md:grid-cols-4 gap-3 shrink-0">
                 
-                <!-- Seçili Parite -->
+                <!-- Aktif Parite & Fiyat -->
                 <div class="bg-darkCard p-3 rounded-lg border border-darkBorder flex items-center justify-between">
                     <div>
-                        <div class="text-[11px] text-slate-400 font-mono">AKTİF PARİTE</div>
+                        <div class="text-[10px] text-slate-400 font-mono">AKTİF PARİTE</div>
                         <div id="activeSymbol" class="text-xl font-bold text-white mt-0.5">BTC / USDT</div>
                     </div>
                     <span id="activeCoinIcon" class="text-2xl">₿</span>
                 </div>
 
-                <!-- ÖZELLEŞTİRİLEBİLİR EŞİK KONTROLÜ -->
-                <div class="bg-darkCard p-3 rounded-lg border border-darkBorder flex flex-col justify-between shadow-sm">
+                <!-- Özelleştirilebilir Eşik Kontrolü -->
+                <div class="bg-darkCard p-3 rounded-lg border border-darkBorder flex flex-col justify-between">
                     <div class="flex justify-between items-center mb-1">
-                        <span class="text-[11px] text-slate-400 font-mono tracking-wider font-semibold">MİNİMUM EŞİK</span>
+                        <span class="text-[10px] text-slate-400 font-mono font-semibold">MİNİMUM EŞİK</span>
                         <span id="activePillLabel" class="text-[10px] px-1.5 py-0.5 rounded bg-accentBlue/15 text-accentBlue font-mono font-bold border border-accentBlue/20">$50,000</span>
                     </div>
-
-                    <!-- +/- Butonlu Input Grubu -->
-                    <div class="flex items-center bg-darkBg border border-darkBorder rounded-lg p-0.5 focus-within:border-accentBlue transition">
-                        <button onclick="adjustThreshold(-5000)" class="w-8 h-7 flex items-center justify-center rounded bg-darkCard hover:bg-darkBorder text-slate-300 hover:text-white font-bold text-sm transition active:scale-95">
-                            −
-                        </button>
-                        
+                    <div class="flex items-center bg-darkBg border border-darkBorder rounded p-0.5 focus-within:border-accentBlue transition">
+                        <button onclick="adjustThreshold(-5000)" class="w-7 h-6 flex items-center justify-center rounded bg-darkCard hover:bg-darkBorder text-slate-300 hover:text-white font-bold text-xs">−</button>
                         <div class="flex-1 flex items-center justify-center gap-0.5 px-2">
                             <span class="text-accentBlue font-bold text-xs">$</span>
-                            <input type="text" id="thresholdDisplay" value="50,000" onchange="onManualThresholdInput(this.value)" 
-                                   class="w-full bg-transparent text-center text-sm font-bold text-white font-mono focus:outline-none tracking-wide">
+                            <input type="text" id="thresholdDisplay" value="50,000" onchange="onManualThresholdInput(this.value)" class="w-full bg-transparent text-center text-xs font-bold text-white font-mono focus:outline-none">
                         </div>
-
-                        <button onclick="adjustThreshold(5000)" class="w-8 h-7 flex items-center justify-center rounded bg-darkCard hover:bg-darkBorder text-slate-300 hover:text-white font-bold text-sm transition active:scale-95">
-                            +
-                        </button>
+                        <button onclick="adjustThreshold(5000)" class="w-7 h-6 flex items-center justify-center rounded bg-darkCard hover:bg-darkBorder text-slate-300 hover:text-white font-bold text-xs">+</button>
                     </div>
-
-                    <!-- Hızlı Seçim Butonları -->
-                    <div class="grid grid-cols-4 gap-1 mt-2">
-                        <button onclick="setQuickThreshold(10000)" class="threshold-pill py-1 bg-darkBg hover:bg-darkBorder border border-darkBorder text-[10px] font-mono text-slate-300 rounded transition" data-val="10000">$10k</button>
-                        <button onclick="setQuickThreshold(50000)" class="threshold-pill py-1 bg-accentBlue text-white font-bold border border-accentBlue text-[10px] font-mono rounded shadow-sm shadow-blue-500/20" data-val="50000">$50k</button>
-                        <button onclick="setQuickThreshold(100000)" class="threshold-pill py-1 bg-darkBg hover:bg-darkBorder border border-darkBorder text-[10px] font-mono text-slate-300 rounded transition" data-val="100000">$100k</button>
-                        <button onclick="setQuickThreshold(250000)" class="threshold-pill py-1 bg-darkBg hover:bg-darkBorder border border-darkBorder text-[10px] font-mono text-slate-300 rounded transition" data-val="250000">$250k</button>
+                    <div class="grid grid-cols-4 gap-1 mt-1.5">
+                        <button onclick="setQuickThreshold(10000)" class="threshold-pill py-0.5 bg-darkBg hover:bg-darkBorder border border-darkBorder text-[10px] font-mono text-slate-300 rounded" data-val="10000">10k</button>
+                        <button onclick="setQuickThreshold(50000)" class="threshold-pill py-0.5 bg-accentBlue text-white font-bold border border-accentBlue text-[10px] font-mono rounded" data-val="50000">50k</button>
+                        <button onclick="setQuickThreshold(100000)" class="threshold-pill py-0.5 bg-darkBg hover:bg-darkBorder border border-darkBorder text-[10px] font-mono text-slate-300 rounded" data-val="100000">100k</button>
+                        <button onclick="setQuickThreshold(250000)" class="threshold-pill py-0.5 bg-darkBg hover:bg-darkBorder border border-darkBorder text-[10px] font-mono text-slate-300 rounded" data-val="250000">250k</button>
                     </div>
                 </div>
 
-                <!-- Yakalanan Balina -->
+                <!-- Yakalanan Balina & Net Delta -->
                 <div class="bg-darkCard p-3 rounded-lg border border-darkBorder flex flex-col justify-center">
-                    <div class="text-[11px] text-slate-400 font-mono">YAKALANAN BALİNA</div>
-                    <div id="whaleCount" class="text-2xl font-bold text-white mt-0.5">0</div>
+                    <div class="flex justify-between items-center">
+                        <span class="text-[10px] text-slate-400 font-mono">TOPLAM BALİNA</span>
+                        <span class="text-[10px] text-slate-400 font-mono">NET DELTA (CVD)</span>
+                    </div>
+                    <div class="flex justify-between items-baseline mt-1">
+                        <div id="whaleCount" class="text-xl font-bold text-white">0</div>
+                        <div id="cvdValue" class="text-sm font-bold font-mono text-whaleGreen">$0</div>
+                    </div>
                 </div>
 
                 <!-- Toplam Balina Hacmi -->
                 <div class="bg-darkCard p-3 rounded-lg border border-darkBorder flex flex-col justify-center">
-                    <div class="text-[11px] text-slate-400 font-mono">TOPLAM BALİNA HACMİ</div>
-                    <div id="totalVolume" class="text-2xl font-bold text-whaleGreen mt-0.5">$0</div>
+                    <div class="text-[10px] text-slate-400 font-mono">TOPLAM FİLTRELENMİŞ HACİM</div>
+                    <div id="totalVolume" class="text-xl font-bold text-white mt-1">$0</div>
                 </div>
 
             </div>
 
-            <!-- CANLI GRAFİK -->
-            <div class="bg-darkCard p-4 rounded-lg border border-darkBorder shrink-0 h-64">
-                <div class="flex justify-between items-center mb-2">
-                    <span class="text-xs font-bold text-slate-400 tracking-wider font-mono">SEÇİLEN EŞİK ÜZERİNDEKİ İŞLEM HACİMLERİ ($)</span>
-                    <span class="text-[11px] text-slate-500">Son 20 Balina Hareketi</span>
+            <!-- 2. ALICI / SATICI GÜÇ BAR'I (CVD PRESSURE BAR) -->
+            <div class="bg-darkCard p-3 rounded-lg border border-darkBorder shrink-0">
+                <div class="flex justify-between items-center text-xs font-mono font-bold mb-1.5">
+                    <span class="text-whaleGreen flex items-center gap-1">🟢 ALICI GÜCÜ: <span id="buyRatio">50%</span> (<span id="buyVol">$0</span>)</span>
+                    <span class="text-slate-400 text-[11px]">ANLIK PİYASA HAKİMİYETİ</span>
+                    <span class="text-whaleRed flex items-center gap-1"><span id="sellVol">$0</span> (<span id="sellRatio">50%</span>) SATICI GÜCÜ 🔴</span>
                 </div>
-                <div class="h-48">
+                <div class="w-full h-3 bg-darkBg rounded-full overflow-hidden flex border border-darkBorder">
+                    <div id="buyBar" class="h-full bg-whaleGreen transition-all duration-300" style="width: 50%;"></div>
+                    <div id="sellBar" class="h-full bg-whaleRed transition-all duration-300" style="width: 50%;"></div>
+                </div>
+            </div>
+
+            <!-- 3. GRAFİK ALANI -->
+            <div class="bg-darkCard p-3 rounded-lg border border-darkBorder shrink-0 h-56">
+                <div class="flex justify-between items-center mb-1">
+                    <span class="text-xs font-bold text-slate-400 tracking-wider font-mono">CANLI BALİNA HACİM DAĞILIMI ($)</span>
+                    <span class="text-[10px] text-slate-500">Son 25 İşlem</span>
+                </div>
+                <div class="h-44">
                     <canvas id="whaleChart"></canvas>
                 </div>
             </div>
 
-            <!-- BALİNA İŞLEM TABLOSU -->
-            <div class="bg-darkCard rounded-lg border border-darkBorder flex-1 flex flex-col min-h-[300px] overflow-hidden">
-                <div class="p-3 border-b border-darkBorder flex justify-between items-center">
-                    <h3 class="text-xs font-bold text-slate-400 uppercase tracking-wider font-mono">FİLTRELENMİŞ BALİNA İŞLEM RADARI</h3>
-                    <span class="text-[11px] text-slate-500">Doğrudan Binance Canlı Yayını</span>
+            <!-- 4. ÇİFTLİ TABLO (SPOT BALİNA & KALDIRAÇLI LİKİDASYONLAR) -->
+            <div class="grid grid-cols-1 lg:grid-cols-3 gap-3 flex-1 min-h-[300px]">
+                
+                <!-- SPOT BALİNA AKIŞI (2 Kolon Genişlik) -->
+                <div class="lg:col-span-2 bg-darkCard rounded-lg border border-darkBorder flex flex-col overflow-hidden">
+                    <div class="p-2.5 border-b border-darkBorder flex justify-between items-center bg-darkCard/90">
+                        <div class="flex items-center gap-2">
+                            <span class="w-2 h-2 rounded-full bg-whaleGreen animate-ping"></span>
+                            <h3 class="text-xs font-bold text-slate-300 font-mono uppercase">SPOT BALİNA İŞLEMLERİ</h3>
+                        </div>
+                        <span class="text-[10px] text-slate-500 font-mono">Otomatik Filtrelenir</span>
+                    </div>
+                    <div class="flex-1 overflow-y-auto">
+                        <table class="w-full text-left text-xs font-mono">
+                            <thead class="bg-darkBg/60 text-slate-400 sticky top-0 border-b border-darkBorder">
+                                <tr>
+                                    <th class="p-2">ZAMAN</th>
+                                    <th class="p-2">PARİTE</th>
+                                    <th class="p-2">TÜR</th>
+                                    <th class="p-2">FİYAT</th>
+                                    <th class="p-2">MİKTAR</th>
+                                    <th class="p-2 text-right">TUTAR</th>
+                                </tr>
+                            </thead>
+                            <tbody id="whaleTableBody" class="divide-y divide-darkBorder/40">
+                                <tr id="emptyRow">
+                                    <td colspan="6" class="p-8 text-center text-slate-500">İşlem bekleniyor...</td>
+                                </tr>
+                            </tbody>
+                        </table>
+                    </div>
                 </div>
-                <div class="flex-1 overflow-y-auto">
-                    <table class="w-full text-left text-xs font-mono">
-                        <thead class="bg-darkBg/50 text-slate-400 sticky top-0 border-b border-darkBorder">
-                            <tr>
-                                <th class="p-2.5">ZAMAN</th>
-                                <th class="p-2.5">PARİTE</th>
-                                <th class="p-2.5">TÜR</th>
-                                <th class="p-2.5">FİYAT</th>
-                                <th class="p-2.5">MİKTAR</th>
-                                <th class="p-2.5 text-right">TOPLAM TUTAR</th>
-                            </tr>
-                        </thead>
-                        <tbody id="whaleTableBody" class="divide-y divide-darkBorder">
-                            <tr id="emptyRow">
-                                <td colspan="6" class="p-8 text-center text-slate-500">Belirlenen eşik değerinin üzerinde işlem bekleniyor...</td>
-                            </tr>
-                        </tbody>
-                    </table>
+
+                <!-- CANLI LİKİDASYON AKIŞI (1 Kolon Genişlik) -->
+                <div class="bg-darkCard rounded-lg border border-darkBorder flex flex-col overflow-hidden">
+                    <div class="p-2.5 border-b border-darkBorder flex justify-between items-center bg-darkCard/90">
+                        <div class="flex items-center gap-2">
+                            <span class="text-base">💥</span>
+                            <h3 class="text-xs font-bold text-liqOrange font-mono uppercase">LİKİDASYON RADARI</h3>
+                        </div>
+                        <span class="text-[10px] text-slate-500 font-mono">Futures ($1k+)</span>
+                    </div>
+                    <div id="liqContainer" class="flex-1 overflow-y-auto p-2 space-y-1.5 font-mono text-xs">
+                        <div id="emptyLiq" class="p-6 text-center text-slate-500 text-[11px]">Patlayan kaldıraçlı pozisyonlar bekleniyor...</div>
+                    </div>
                 </div>
+
             </div>
 
         </main>
     </div>
 
-    <!-- JAVASCRIPT -->
+    <!-- JAVASCRIPT MOTORU -->
     <script>
         const COINS = [
             { symbol: "BTCUSDT", name: "Bitcoin", icon: "₿" },
@@ -192,18 +241,22 @@
         let userThreshold = 50000;
         let audioEnabled = false;
         let audioCtx = null;
-        
+        let notificationPerm = false;
+
+        // Veri Deposu
         const rawTradeStore = {};
+        const liquidationStore = [];
         COINS.forEach(c => { rawTradeStore[c.symbol] = []; });
 
+        // Sol Menü Render
         function renderSidebar() {
             const list = document.getElementById('coinList');
             list.innerHTML = '';
             COINS.forEach(c => {
                 const isActive = c.symbol === activeSymbol;
                 const btn = document.createElement('button');
-                btn.className = `w-full px-3 py-2.5 rounded-lg flex items-center justify-between text-xs transition coin-btn ${
-                    isActive ? 'bg-accentBlue text-white font-bold shadow-lg shadow-blue-500/20' : 'text-slate-300 hover:bg-darkBorder/60'
+                btn.className = `w-full px-3 py-2 rounded-lg flex items-center justify-between text-xs transition coin-btn ${
+                    isActive ? 'bg-accentBlue text-white font-bold shadow-md shadow-blue-500/20' : 'text-slate-300 hover:bg-darkBorder/60'
                 }`;
                 btn.onclick = () => selectCoin(c.symbol);
                 btn.id = `btn-${c.symbol}`;
@@ -221,12 +274,10 @@
         }
 
         function filterCoins() {
-            const query = document.getElementById('coinSearch').value.toUpperCase();
+            const q = document.getElementById('coinSearch').value.toUpperCase();
             COINS.forEach(c => {
                 const btn = document.getElementById(`btn-${c.symbol}`);
-                if (btn) {
-                    btn.style.display = (c.symbol.includes(query) || c.name.toUpperCase().includes(query)) ? 'flex' : 'none';
-                }
+                if (btn) btn.style.display = (c.symbol.includes(q) || c.name.toUpperCase().includes(q)) ? 'flex' : 'none';
             });
         }
 
@@ -240,6 +291,7 @@
             recalculateAndRender();
         }
 
+        // Eşik Kontrolleri
         function adjustThreshold(step) {
             userThreshold = Math.max(1000, userThreshold + step);
             syncThresholdUI();
@@ -254,9 +306,7 @@
 
         function onManualThresholdInput(rawVal) {
             const cleanNum = parseFloat(rawVal.replace(/[^0-9.]/g, ''));
-            if (!isNaN(cleanNum) && cleanNum >= 1000) {
-                userThreshold = cleanNum;
-            }
+            if (!isNaN(cleanNum) && cleanNum >= 1000) userThreshold = cleanNum;
             syncThresholdUI();
             recalculateAndRender();
         }
@@ -268,74 +318,123 @@
             document.querySelectorAll('.threshold-pill').forEach(btn => {
                 const btnVal = parseFloat(btn.getAttribute('data-val'));
                 if (btnVal === userThreshold) {
-                    btn.className = "threshold-pill py-1 bg-accentBlue text-white font-bold border border-accentBlue text-[10px] font-mono rounded shadow-sm shadow-blue-500/20";
+                    btn.className = "threshold-pill py-0.5 bg-accentBlue text-white font-bold border border-accentBlue text-[10px] font-mono rounded";
                 } else {
-                    btn.className = "threshold-pill py-1 bg-darkBg hover:bg-darkBorder border border-darkBorder text-[10px] font-mono text-slate-300 rounded transition";
+                    btn.className = "threshold-pill py-0.5 bg-darkBg hover:bg-darkBorder border border-darkBorder text-[10px] font-mono text-slate-300 rounded";
                 }
             });
         }
 
+        // Ekranı & İbreleri Yeniden Hesapla
         function recalculateAndRender() {
             const allTrades = rawTradeStore[activeSymbol] || [];
             const filtered = allTrades.filter(t => t.total_usd >= userThreshold);
             
-            const totalVol = filtered.reduce((acc, t) => acc + t.total_usd, 0);
+            let buyVol = 0;
+            let sellVol = 0;
+            filtered.forEach(t => {
+                if (t.type === 'BUY') buyVol += t.total_usd;
+                else sellVol += t.total_usd;
+            });
+
+            const totalVol = buyVol + sellVol;
+            const netCvd = buyVol - sellVol;
+
+            // Metrikler
             document.getElementById('whaleCount').innerText = filtered.length;
             document.getElementById('totalVolume').innerText = `$${totalVol.toLocaleString('en-US', {maximumFractionDigits: 0})}`;
+            
+            const cvdEl = document.getElementById('cvdValue');
+            cvdEl.innerText = `${netCvd >= 0 ? '+' : ''}$${netCvd.toLocaleString('en-US', {maximumFractionDigits: 0})}`;
+            cvdEl.className = `text-sm font-bold font-mono ${netCvd >= 0 ? 'text-whaleGreen' : 'text-whaleRed'}`;
 
+            // Güç Barı
+            const buyRatio = totalVol > 0 ? ((buyVol / totalVol) * 100) : 50;
+            const sellRatio = totalVol > 0 ? ((sellVol / totalVol) * 100) : 50;
+            document.getElementById('buyRatio').innerText = `${buyRatio.toFixed(1)}%`;
+            document.getElementById('sellRatio').innerText = `${sellRatio.toFixed(1)}%`;
+            document.getElementById('buyVol').innerText = `$${buyVol.toLocaleString('en-US', {maximumFractionDigits: 0})}`;
+            document.getElementById('sellVol').innerText = `$${sellVol.toLocaleString('en-US', {maximumFractionDigits: 0})}`;
+            document.getElementById('buyBar').style.width = `${buyRatio}%`;
+            document.getElementById('sellBar').style.width = `${sellRatio}%`;
+
+            // Tablo
             const tbody = document.getElementById('whaleTableBody');
             tbody.innerHTML = '';
             if (filtered.length === 0) {
-                tbody.innerHTML = `<tr id="emptyRow"><td colspan="6" class="p-8 text-center text-slate-500">$${userThreshold.toLocaleString()} üzerinde işlem henüz yok.</td></tr>`;
+                tbody.innerHTML = `<tr id="emptyRow"><td colspan="6" class="p-8 text-center text-slate-500">$${userThreshold.toLocaleString()} üzerinde işlem bekleniyor...</td></tr>`;
             } else {
                 filtered.slice(0, 50).forEach(t => renderTableRow(t, false));
             }
 
-            const chartSubset = filtered.slice(0, 20).reverse();
+            // Grafik
+            const chartSubset = filtered.slice(0, 25).reverse();
             whaleChart.data.labels = chartSubset.map(t => new Date(t.timestamp).toLocaleTimeString([], {hour:'2-digit', minute:'2-digit', second:'2-digit'}));
             whaleChart.data.datasets[0].data = chartSubset.map(t => t.total_usd);
             whaleChart.data.datasets[0].backgroundColor = chartSubset.map(t => t.type === 'BUY' ? '#00f59b' : '#ff3b69');
             whaleChart.update('none');
         }
 
+        // Chart.js
         const ctx = document.getElementById('whaleChart').getContext('2d');
         const whaleChart = new Chart(ctx, {
             type: 'bar',
-            data: { labels: [], datasets: [{ label: 'İşlem ($)', data: [], backgroundColor: [], borderRadius: 4 }] },
+            data: { labels: [], datasets: [{ label: 'İşlem ($)', data: [], backgroundColor: [], borderRadius: 3 }] },
             options: {
                 responsive: true,
                 maintainAspectRatio: false,
                 plugins: { legend: { display: false } },
                 scales: {
-                    x: { grid: { display: false }, ticks: { color: '#64748b', font: { size: 10 } } },
-                    y: { grid: { color: '#1e293b' }, ticks: { color: '#64748b', font: { size: 10 }, callback: v => `$${(v/1000)}k` } }
+                    x: { grid: { display: false }, ticks: { color: '#64748b', font: { size: 9 } } },
+                    y: { grid: { color: '#1a2233' }, ticks: { color: '#64748b', font: { size: 9 }, callback: v => `$${(v/1000)}k` } }
                 }
             }
         });
 
+        // Ses Motoru
         function toggleAudio() {
             audioEnabled = !audioEnabled;
             if (audioEnabled && !audioCtx) audioCtx = new (window.AudioContext || window.webkitAudioContext)();
             const btn = document.getElementById('soundToggle');
             btn.innerHTML = audioEnabled ? '🔊 <span>Ses: Açık</span>' : '🔇 <span>Ses: Kapalı</span>';
-            btn.className = audioEnabled ? 'px-3 py-1 bg-accentBlue text-white rounded text-xs transition flex items-center gap-1.5' : 'px-3 py-1 bg-darkBg hover:bg-darkBorder border border-darkBorder rounded text-xs text-slate-300 transition flex items-center gap-1.5';
+            btn.className = audioEnabled ? 'px-2.5 py-1 bg-accentBlue text-white rounded text-xs transition flex items-center gap-1' : 'px-2.5 py-1 bg-darkBg hover:bg-darkBorder border border-darkBorder rounded text-xs text-slate-300 transition flex items-center gap-1';
         }
 
-        function playAlertSound(type) {
+        function playSound(freq, duration = 0.2) {
             if (!audioEnabled || !audioCtx) return;
             try {
                 const osc = audioCtx.createOscillator();
                 const gain = audioCtx.createGain();
                 osc.connect(gain);
                 gain.connect(audioCtx.destination);
-                osc.frequency.value = type === 'BUY' ? 880 : 440;
+                osc.frequency.value = freq;
                 gain.gain.setValueAtTime(0.08, audioCtx.currentTime);
-                gain.gain.exponentialRampToValueAtTime(0.001, audioCtx.currentTime + 0.2);
+                gain.gain.exponentialRampToValueAtTime(0.001, audioCtx.currentTime + duration);
                 osc.start();
-                osc.stop(audioCtx.currentTime + 0.2);
+                osc.stop(audioCtx.currentTime + duration);
             } catch(e) {}
         }
 
+        // Bildirim İzni
+        function requestNotificationPerm() {
+            if (!("Notification" in window)) {
+                alert("Tarayıcınız masaüstü bildirimlerini desteklemiyor.");
+                return;
+            }
+            Notification.requestPermission().then(perm => {
+                notificationPerm = (perm === "granted");
+                const btnText = document.getElementById('notifyText');
+                btnText.innerText = notificationPerm ? "Bildirim: Açık" : "Bildirim: Reddedildi";
+            });
+        }
+
+        function sendDesktopNotification(title, body) {
+            if (notificationPerm && document.hidden) {
+                new Notification(title, { body: body, icon: "https://kadir-ozn.github.io/crypto-whale-radar/favicon.ico" });
+            }
+        }
+
+        // Spot Tabloya Satır Basma
         function renderTableRow(whale, prepend = true) {
             const tbody = document.getElementById('whaleTableBody');
             const emptyRow = document.getElementById('emptyRow');
@@ -347,12 +446,12 @@
             
             const time = new Date(whale.timestamp).toLocaleTimeString();
             tr.innerHTML = `
-                <td class="p-2.5 text-slate-400">${time}</td>
-                <td class="p-2.5 font-bold text-slate-200">${whale.symbol.replace('USDT', '')}</td>
-                <td class="p-2.5"><span class="px-1.5 py-0.5 rounded text-[10px] font-bold ${isBuy ? 'bg-whaleGreen/20 text-whaleGreen' : 'bg-whaleRed/20 text-whaleRed'}">${whale.type}</span></td>
-                <td class="p-2.5 font-bold text-slate-200">$${whale.price.toLocaleString()}</td>
-                <td class="p-2.5 text-slate-400">${whale.quantity.toFixed(3)}</td>
-                <td class="p-2.5 text-right font-bold ${isBuy ? 'text-whaleGreen' : 'text-whaleRed'}">$${whale.total_usd.toLocaleString('en-US', {maximumFractionDigits: 0})}</td>
+                <td class="p-2 text-slate-400">${time}</td>
+                <td class="p-2 font-bold text-slate-200">${whale.symbol.replace('USDT', '')}</td>
+                <td class="p-2"><span class="px-1.5 py-0.5 rounded text-[10px] font-bold ${isBuy ? 'bg-whaleGreen/20 text-whaleGreen' : 'bg-whaleRed/20 text-whaleRed'}">${whale.type}</span></td>
+                <td class="p-2 font-bold text-slate-200">$${whale.price.toLocaleString()}</td>
+                <td class="p-2 text-slate-400">${whale.quantity.toFixed(3)}</td>
+                <td class="p-2 text-right font-bold ${isBuy ? 'text-whaleGreen' : 'text-whaleRed'}">$${whale.total_usd.toLocaleString('en-US', {maximumFractionDigits: 0})}</td>
             `;
 
             if (prepend) {
@@ -363,40 +462,92 @@
             }
         }
 
-        // Doğrudan Binance Combined WebSocket Bağlantısı
+        // Likidasyon Kartı Basma
+        function renderLiquidation(liq) {
+            const container = document.getElementById('liqContainer');
+            const emptyLiq = document.getElementById('emptyLiq');
+            if (emptyLiq) emptyLiq.remove();
+
+            const isShortLiq = liq.side === 'BUY'; // Satın alınarak likit olan = Short Pozisyon Patladı
+            const posType = isShortLiq ? 'SHORT LİKİT' : 'LONG LİKİT';
+            const colorClass = isShortLiq ? 'border-whaleGreen/40 bg-whaleGreen/10 text-whaleGreen' : 'border-whaleRed/40 bg-whaleRed/10 text-whaleRed';
+
+            const card = document.createElement('div');
+            card.className = `p-2 rounded border ${colorClass} flex justify-between items-center text-xs animate-pulse`;
+            card.innerHTML = `
+                <div>
+                    <div class="font-bold flex items-center gap-1">💥 ${liq.symbol.replace('USDT', '')} <span class="text-[10px] px-1 rounded bg-darkBg/60">${posType}</span></div>
+                    <div class="text-[10px] text-slate-400 mt-0.5">${new Date(liq.time).toLocaleTimeString()} | Fiyat: $${liq.price.toLocaleString()}</div>
+                </div>
+                <div class="text-right">
+                    <div class="font-bold text-sm">$${liq.total_usd.toLocaleString('en-US', {maximumFractionDigits: 0})}</div>
+                </div>
+            `;
+
+            container.insertBefore(card, container.firstChild);
+            if (container.children.length > 30) container.removeChild(container.lastChild);
+
+            playSound(220, 0.4); // Derin likidasyon sesi
+            sendDesktopNotification("💥 LİKİDASYON ALARMI!", `${liq.symbol}: $${liq.total_usd.toLocaleString()} ${posType}`);
+        }
+
+        // CSV İndirme Motoru
+        function exportToCSV() {
+            const allTrades = rawTradeStore[activeSymbol] || [];
+            if (allTrades.length === 0) {
+                alert("İndirilecek veri bulunamadı!");
+                return;
+            }
+
+            let csvContent = "data:text/csv;charset=utf-8,Zaman,Parite,Islem_Turu,Fiyat,Miktar,Toplam_USD\n";
+            allTrades.forEach(t => {
+                const time = new Date(t.timestamp).toISOString();
+                csvContent += `${time},${t.symbol},${t.type},${t.price},${t.quantity},${t.total_usd}\n`;
+            });
+
+            const encodedUri = encodeURI(csvContent);
+            const link = document.createElement("a");
+            link.setAttribute("href", encodedUri);
+            link.setAttribute("download", `whale_radar_${activeSymbol}_${new Date().toISOString().slice(0,10)}.csv`);
+            document.body.appendChild(link);
+            link.click();
+            document.body.removeChild(link);
+        }
+
+        // WebSocket Motoru (Spot + Futures Liquidation)
         function initWebSocket() {
             const badge = document.getElementById('connBadge');
             const text = document.getElementById('connText');
 
-            const streams = COINS.map(c => `${c.symbol.toLowerCase()}@aggTrade`).join('/');
-            const binanceUrl = `wss://stream.binance.com:9443/stream?streams=${streams}`;
+            // 1. Spot Akışı (AggTrades)
+            const spotStreams = COINS.map(c => `${c.symbol.toLowerCase()}@aggTrade`).join('/');
+            const spotWs = new WebSocket(`wss://stream.binance.com:9443/stream?streams=${spotStreams}`);
 
-            const ws = new WebSocket(binanceUrl);
+            // 2. Futures Likidasyon Akışı (All Liquidation Stream)
+            const fapiWs = new WebSocket('wss://fstream.binance.com/ws/!forceOrder@arr');
 
-            ws.onopen = () => {
-                badge.className = "flex items-center gap-2 px-3 py-1 rounded-full text-xs font-semibold bg-emerald-500/10 text-emerald-400 border border-emerald-500/20";
+            spotWs.onopen = () => {
+                badge.className = "flex items-center gap-1.5 px-2.5 py-1 rounded-full text-[11px] font-semibold bg-emerald-500/10 text-emerald-400 border border-emerald-500/20";
                 badge.children[0].className = "w-2 h-2 rounded-full bg-emerald-500";
-                text.innerText = "Binance Canlı Yayında";
+                text.innerText = "Spot & Futures Yayında";
             };
 
-            ws.onmessage = (event) => {
+            spotWs.onmessage = (event) => {
                 const msg = JSON.parse(event.data);
                 const payload = msg.data;
                 if (!payload || !payload.s) return;
 
-                const symbol = payload.s;
                 const price = parseFloat(payload.p);
                 const qty = parseFloat(payload.q);
                 const total_usd = price * qty;
 
-                // 1000$ altı küçük işlemleri hafızayı şişirmemek için geç
                 if (total_usd < 1000) return;
 
                 const isBuyerMaker = payload.m;
                 const tradeType = isBuyerMaker ? "SELL" : "BUY";
 
                 const whale = {
-                    symbol: symbol,
+                    symbol: payload.s,
                     price: price,
                     quantity: qty,
                     total_usd: total_usd,
@@ -410,41 +561,51 @@
                 store.unshift(whale);
                 if (store.length > 500) store.pop();
 
-                // Eğer aktif seçili coinin işlem tutarı belirlenen eşikten büyükse canlı bas
                 if (whale.symbol === activeSymbol && whale.total_usd >= userThreshold) {
-                    const currentCount = parseInt(document.getElementById('whaleCount').innerText) || 0;
-                    document.getElementById('whaleCount').innerText = currentCount + 1;
-
-                    const curVolText = document.getElementById('totalVolume').innerText.replace(/[^0-9.-]+/g, "");
-                    const currentVol = parseFloat(curVolText) || 0;
-                    document.getElementById('totalVolume').innerText = `$${(currentVol + whale.total_usd).toLocaleString('en-US', {maximumFractionDigits: 0})}`;
-
                     renderTableRow(whale, true);
+                    playSound(whale.type === 'BUY' ? 880 : 440);
 
-                    const timeStr = new Date(whale.timestamp).toLocaleTimeString([], {hour: '2-digit', minute:'2-digit', second:'2-digit'});
-                    whaleChart.data.labels.push(timeStr);
-                    whaleChart.data.datasets[0].data.push(whale.total_usd);
-                    whaleChart.data.datasets[0].backgroundColor.push(whale.type === 'BUY' ? '#00f59b' : '#ff3b69');
-
-                    if (whaleChart.data.labels.length > 20) {
-                        whaleChart.data.labels.shift();
-                        whaleChart.data.datasets[0].data.shift();
-                        whaleChart.data.datasets[0].backgroundColor.shift();
+                    // Eşik üstü büyük bildirim
+                    if (whale.total_usd >= 100000) {
+                        sendDesktopNotification(`🚨 BÜYÜK BALİNA (${whale.symbol})`, `${whale.type} | $${whale.total_usd.toLocaleString()} @ $${whale.price}`);
                     }
-                    whaleChart.update('none');
 
-                    playAlertSound(whale.type);
+                    recalculateAndRender();
                 }
             };
 
-            ws.onclose = () => {
-                badge.className = "flex items-center gap-2 px-3 py-1 rounded-full text-xs font-semibold bg-red-500/10 text-red-400 border border-red-500/20";
+            fapiWs.onmessage = (event) => {
+                const msg = JSON.parse(event.data);
+                const o = msg.o;
+                if (!o) return;
+
+                const price = parseFloat(o.p);
+                const qty = parseFloat(o.q);
+                const total_usd = price * qty;
+
+                // $1,000 üzerindeki likidasyonları yakala
+                if (total_usd >= 1000) {
+                    const liqData = {
+                        symbol: o.s,
+                        side: o.S,
+                        price: price,
+                        quantity: qty,
+                        total_usd: total_usd,
+                        time: msg.E
+                    };
+                    renderLiquidation(liqData);
+                }
+            };
+
+            spotWs.onclose = () => {
+                badge.className = "flex items-center gap-1.5 px-2.5 py-1 rounded-full text-[11px] font-semibold bg-red-500/10 text-red-400 border border-red-500/20";
                 badge.children[0].className = "w-2 h-2 rounded-full bg-red-500 animate-pulse";
                 text.innerText = "Yeniden Bağlanıyor...";
                 setTimeout(initWebSocket, 3000);
             };
         }
 
+        // Başlat
         renderSidebar();
         initWebSocket();
     </script>
