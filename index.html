@@ -1,9 +1,9 @@
 <!DOCTYPE html>
-<html lang="tr" class="dark">
+<html lang="tr" class="dark theme-navy">
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>WhaleRadar Pro Terminal | Spot & Liquidations</title>
+    <title>WhaleRadar Pro Terminal v3 | Bloomberg Edition</title>
     <!-- Tailwind CSS CDN -->
     <script src="https://cdn.tailwindcss.com"></script>
     <!-- Chart.js CDN -->
@@ -14,12 +14,12 @@
             theme: {
                 extend: {
                     colors: {
-                        darkBg: '#090d16',
-                        darkCard: '#131926',
-                        darkBorder: '#20293a',
+                        darkBg: 'var(--bg-main)',
+                        darkCard: 'var(--bg-card)',
+                        darkBorder: 'var(--border-color)',
                         whaleGreen: '#00f59b',
                         whaleRed: '#ff3b69',
-                        accentBlue: '#3b82f6',
+                        accentBlue: 'var(--accent-color)',
                         liqOrange: '#f59e0b'
                     }
                 }
@@ -27,21 +27,40 @@
         }
     </script>
     <style>
+        :root.theme-navy {
+            --bg-main: #090d16;
+            --bg-card: #131926;
+            --border-color: #20293a;
+            --accent-color: #3b82f6;
+        }
+        :root.theme-cyber {
+            --bg-main: #050807;
+            --bg-card: #0c1410;
+            --border-color: #173322;
+            --accent-color: #00ff88;
+        }
+        :root.theme-slate {
+            --bg-main: #11141a;
+            --bg-card: #1c212c;
+            --border-color: #2e3748;
+            --accent-color: #eab308;
+        }
+
         ::-webkit-scrollbar { width: 5px; height: 5px; }
-        ::-webkit-scrollbar-track { background: #090d16; }
-        ::-webkit-scrollbar-thumb { background: #20293a; border-radius: 4px; }
-        ::-webkit-scrollbar-thumb:hover { background: #3b82f6; }
+        ::-webkit-scrollbar-track { background: var(--bg-main); }
+        ::-webkit-scrollbar-thumb { background: var(--border-color); border-radius: 4px; }
+        ::-webkit-scrollbar-thumb:hover { background: var(--accent-color); }
     </style>
 </head>
-<body class="bg-darkBg text-slate-200 font-sans h-screen flex flex-col overflow-hidden">
+<body class="bg-darkBg text-slate-200 font-sans h-screen flex flex-col overflow-hidden transition-colors duration-300">
 
     <!-- ÜST NAVBAR -->
     <header class="h-14 border-b border-darkBorder bg-darkCard/90 backdrop-blur px-4 flex items-center justify-between shrink-0">
         <div class="flex items-center gap-3">
             <span class="text-2xl animate-bounce">🐋</span>
             <div>
-                <h1 class="text-base font-bold tracking-wider text-white leading-none">WHALE<span class="text-accentBlue">RADAR</span> <span class="text-[10px] px-1.5 py-0.5 rounded bg-accentBlue/20 text-accentBlue font-mono border border-accentBlue/30">TERMINAL v2</span></h1>
-                <p class="text-[10px] text-slate-400 font-mono mt-0.5">Spot Balina & Kaldıraç Likidasyon Akışı</p>
+                <h1 class="text-base font-bold tracking-wider text-white leading-none">WHALE<span class="text-accentBlue">RADAR</span> <span class="text-[10px] px-1.5 py-0.5 rounded bg-accentBlue/20 text-accentBlue font-mono border border-accentBlue/30">ULTIMATE v3</span></h1>
+                <p class="text-[10px] text-slate-400 font-mono mt-0.5">Spot Balina • Futures Likidasyon • Telegram Alert</p>
             </div>
         </div>
 
@@ -52,9 +71,21 @@
                 <span id="connText">Bağlanıyor...</span>
             </div>
 
+            <!-- Tema Seçici -->
+            <select id="themeSelect" onchange="changeTheme(this.value)" class="px-2 py-1 bg-darkBg border border-darkBorder rounded text-xs text-slate-300 focus:outline-none font-mono">
+                <option value="theme-navy">🌑 Cyber Navy</option>
+                <option value="theme-cyber">⚡ Matrix Green</option>
+                <option value="theme-slate">🏛️ Bloomberg Slate</option>
+            </select>
+
+            <!-- Telegram / Discord Bot Butonu -->
+            <button onclick="toggleBotModal()" class="px-2.5 py-1 bg-darkBg hover:bg-darkBorder border border-darkBorder rounded text-xs text-slate-300 transition flex items-center gap-1">
+                🤖 <span>Bot / Webhook</span>
+            </button>
+
             <!-- Masaüstü Bildirim Butonu -->
             <button id="notifyBtn" onclick="requestNotificationPerm()" class="px-2.5 py-1 bg-darkBg hover:bg-darkBorder border border-darkBorder rounded text-xs text-slate-300 transition flex items-center gap-1">
-                🔔 <span id="notifyText">Bildirim: Kapalı</span>
+                🔔 <span id="notifyText">Bildirim</span>
             </button>
 
             <!-- Ses Butonu -->
@@ -64,7 +95,7 @@
 
             <!-- CSV Dışa Aktar Butonu -->
             <button onclick="exportToCSV()" class="px-2.5 py-1 bg-accentBlue/10 hover:bg-accentBlue/20 border border-accentBlue/30 rounded text-xs text-accentBlue font-semibold transition flex items-center gap-1">
-                📥 <span>CSV İndir</span>
+                📥 <span>CSV</span>
             </button>
         </div>
     </header>
@@ -75,7 +106,7 @@
         <!-- SOL SIDEBAR (TAKİP LİSTESİ) -->
         <aside class="w-60 border-r border-darkBorder bg-darkCard/40 flex flex-col shrink-0">
             <div class="p-3 border-b border-darkBorder">
-                <input type="text" id="coinSearch" placeholder="🔍 Kripto Ara..." onkeyup="filterCoins()" class="w-full bg-darkBg border border-darkBorder rounded px-3 py-1.5 text-xs text-slate-200 focus:outline-none focus:border-accentBlue placeholder-slate-500">
+                <input type="text" id="coinSearch" placeholder="🔍 Kripto Ara..." onkeyup="filterCoins()" class="w-full bg-darkBg border border-darkBorder rounded px-3 py-1.5 text-xs text-slate-200 focus:outline-none focus:border-accentBlue placeholder-slate-500 font-mono">
             </div>
             <div class="p-2 border-b border-darkBorder flex justify-between text-[10px] text-slate-400 font-mono">
                 <span>PARİTE</span>
@@ -154,21 +185,35 @@
                 </div>
             </div>
 
-            <!-- 3. GRAFİK ALANI -->
-            <div class="bg-darkCard p-3 rounded-lg border border-darkBorder shrink-0 h-56">
-                <div class="flex justify-between items-center mb-1">
-                    <span class="text-xs font-bold text-slate-400 tracking-wider font-mono">CANLI BALİNA HACİM DAĞILIMI ($)</span>
-                    <span class="text-[10px] text-slate-500">Son 25 İşlem</span>
+            <!-- 3. GRAFİK VE BALİNA YOĞUNLUK HARİTASI (HEATMAP) -->
+            <div class="grid grid-cols-1 lg:grid-cols-3 gap-3 shrink-0 h-60">
+                <!-- Canlı Balina Hacim Bar Grafiği -->
+                <div class="lg:col-span-2 bg-darkCard p-3 rounded-lg border border-darkBorder flex flex-col">
+                    <div class="flex justify-between items-center mb-1">
+                        <span class="text-xs font-bold text-slate-400 tracking-wider font-mono">CANLI BALİNA HACİM DAĞILIMI ($)</span>
+                        <span class="text-[10px] text-slate-500">Son 25 İşlem</span>
+                    </div>
+                    <div class="flex-1 min-h-0">
+                        <canvas id="whaleChart"></canvas>
+                    </div>
                 </div>
-                <div class="h-44">
-                    <canvas id="whaleChart"></canvas>
+
+                <!-- Balina Fiyat Yoğunluk Profili (Heatmap) -->
+                <div class="bg-darkCard p-3 rounded-lg border border-darkBorder flex flex-col">
+                    <div class="flex justify-between items-center mb-2">
+                        <span class="text-xs font-bold text-slate-400 tracking-wider font-mono">FİYAT YOĞUNLUK HARİTASI</span>
+                        <span class="text-[10px] text-accentBlue font-mono">Heatmap</span>
+                    </div>
+                    <div id="heatmapList" class="flex-1 overflow-y-auto space-y-1.5 font-mono text-[11px]">
+                        <div class="text-slate-500 text-center py-6 text-xs">Yeterli balina verisi toplanıyor...</div>
+                    </div>
                 </div>
             </div>
 
             <!-- 4. ÇİFTLİ TABLO (SPOT BALİNA & KALDIRAÇLI LİKİDASYONLAR) -->
             <div class="grid grid-cols-1 lg:grid-cols-3 gap-3 flex-1 min-h-[300px]">
                 
-                <!-- SPOT BALİNA AKIŞI (2 Kolon Genişlik) -->
+                <!-- SPOT BALİNA AKIŞI -->
                 <div class="lg:col-span-2 bg-darkCard rounded-lg border border-darkBorder flex flex-col overflow-hidden">
                     <div class="p-2.5 border-b border-darkBorder flex justify-between items-center bg-darkCard/90">
                         <div class="flex items-center gap-2">
@@ -198,7 +243,7 @@
                     </div>
                 </div>
 
-                <!-- CANLI LİKİDASYON AKIŞI (1 Kolon Genişlik) -->
+                <!-- CANLI LİKİDASYON AKIŞI -->
                 <div class="bg-darkCard rounded-lg border border-darkBorder flex flex-col overflow-hidden">
                     <div class="p-2.5 border-b border-darkBorder flex justify-between items-center bg-darkCard/90">
                         <div class="flex items-center gap-2">
@@ -215,6 +260,40 @@
             </div>
 
         </main>
+    </div>
+
+    <!-- BOT & WEBHOOK MODAL -->
+    <div id="botModal" class="fixed inset-0 bg-black/70 backdrop-blur-sm z-50 hidden flex items-center justify-center p-4">
+        <div class="bg-darkCard border border-darkBorder w-full max-w-md rounded-xl p-5 shadow-2xl space-y-4">
+            <div class="flex justify-between items-center border-b border-darkBorder pb-3">
+                <h3 class="font-bold text-white flex items-center gap-2">🤖 <span>Telegram / Discord Bildirim Botu</span></h3>
+                <button onclick="toggleBotModal()" class="text-slate-400 hover:text-white text-lg font-bold">✕</button>
+            </div>
+            
+            <div class="space-y-3 text-xs font-mono">
+                <div>
+                    <label class="block text-slate-400 mb-1">Telegram Bot Token:</label>
+                    <input type="text" id="tgToken" placeholder="örn: 8623857901:AAH2mMnEC4qMjG3..." class="w-full bg-darkBg border border-darkBorder rounded px-3 py-2 text-white focus:outline-none focus:border-accentBlue">
+                </div>
+                <div>
+                    <label class="block text-slate-400 mb-1">Telegram Chat ID:</label>
+                    <input type="text" id="tgChatId" placeholder="örn: 987654321" class="w-full bg-darkBg border border-darkBorder rounded px-3 py-2 text-white focus:outline-none focus:border-accentBlue">
+                </div>
+                <div>
+                    <label class="block text-slate-400 mb-1">Discord Webhook URL (Opsiyonel):</label>
+                    <input type="text" id="discordWebhook" placeholder="https://discord.com/api/webhooks/..." class="w-full bg-darkBg border border-darkBorder rounded px-3 py-2 text-white focus:outline-none focus:border-accentBlue">
+                </div>
+                <div>
+                    <label class="block text-slate-400 mb-1">Bot Alarm Limiti ($):</label>
+                    <input type="number" id="botThreshold" value="250000" class="w-full bg-darkBg border border-darkBorder rounded px-3 py-2 text-accentBlue font-bold focus:outline-none focus:border-accentBlue">
+                </div>
+            </div>
+
+            <div class="flex justify-between items-center pt-2 border-t border-darkBorder">
+                <button onclick="testBotMessage()" class="px-3 py-1.5 bg-darkBg hover:bg-darkBorder border border-darkBorder rounded text-xs text-slate-300 transition">🧪 Test Mesajı Gönder</button>
+                <button onclick="saveBotSettings()" class="px-4 py-1.5 bg-accentBlue text-white font-bold rounded text-xs transition shadow-lg shadow-blue-500/20">Kaydet</button>
+            </div>
+        </div>
     </div>
 
     <!-- JAVASCRIPT MOTORU -->
@@ -243,10 +322,26 @@
         let audioCtx = null;
         let notificationPerm = false;
 
+        // Bot Ayarları
+        let botConfig = {
+            tgToken: localStorage.getItem('tgToken') || '',
+            tgChatId: localStorage.getItem('tgChatId') || '',
+            discordWebhook: localStorage.getItem('discordWebhook') || '',
+            botThreshold: parseFloat(localStorage.getItem('botThreshold')) || 250000
+        };
+
         // Veri Deposu
         const rawTradeStore = {};
-        const liquidationStore = [];
         COINS.forEach(c => { rawTradeStore[c.symbol] = []; });
+
+        // Tema Değiştirme
+        function changeTheme(themeName) {
+            document.documentElement.className = `dark ${themeName}`;
+            localStorage.setItem('whaleTheme', themeName);
+        }
+        const savedTheme = localStorage.getItem('whaleTheme') || 'theme-navy';
+        document.getElementById('themeSelect').value = savedTheme;
+        changeTheme(savedTheme);
 
         // Sol Menü Render
         function renderSidebar() {
@@ -325,6 +420,51 @@
             });
         }
 
+        // Heatmap Render Motoru
+        function renderHeatmap(trades) {
+            const heatmapList = document.getElementById('heatmapList');
+            if (!trades || trades.length === 0) {
+                heatmapList.innerHTML = `<div class="text-slate-500 text-center py-6 text-xs">Yeterli balina verisi toplanıyor...</div>`;
+                return;
+            }
+
+            const priceBuckets = {};
+            trades.forEach(t => {
+                const roundedPrice = t.price >= 100 ? Math.round(t.price) : t.price.toFixed(4);
+                if (!priceBuckets[roundedPrice]) {
+                    priceBuckets[roundedPrice] = { vol: 0, buyVol: 0, sellVol: 0 };
+                }
+                priceBuckets[roundedPrice].vol += t.total_usd;
+                if (t.type === 'BUY') priceBuckets[roundedPrice].buyVol += t.total_usd;
+                else priceBuckets[roundedPrice].sellVol += t.total_usd;
+            });
+
+            const sortedBuckets = Object.entries(priceBuckets)
+                .sort((a, b) => b[1].vol - a[1].vol)
+                .slice(0, 6);
+
+            const maxVol = Math.max(...sortedBuckets.map(b => b[1].vol), 1);
+            heatmapList.innerHTML = '';
+
+            sortedBuckets.forEach(([price, data]) => {
+                const widthPct = ((data.vol / maxVol) * 100).toFixed(0);
+                const isDominantBuy = data.buyVol >= data.sellVol;
+                
+                const row = document.createElement('div');
+                row.className = 'space-y-0.5';
+                row.innerHTML = `
+                    <div class="flex justify-between text-[10px]">
+                        <span class="font-bold text-slate-300">$${Number(price).toLocaleString()}</span>
+                        <span class="${isDominantBuy ? 'text-whaleGreen' : 'text-whaleRed'} font-semibold">$${data.vol.toLocaleString('en-US', {maximumFractionDigits: 0})}</span>
+                    </div>
+                    <div class="w-full h-1.5 bg-darkBg rounded overflow-hidden flex">
+                        <div class="h-full ${isDominantBuy ? 'bg-whaleGreen' : 'bg-whaleRed'}" style="width: ${widthPct}%;"></div>
+                    </div>
+                `;
+                heatmapList.appendChild(row);
+            });
+        }
+
         // Ekranı & İbreleri Yeniden Hesapla
         function recalculateAndRender() {
             const allTrades = rawTradeStore[activeSymbol] || [];
@@ -373,6 +513,9 @@
             whaleChart.data.datasets[0].data = chartSubset.map(t => t.total_usd);
             whaleChart.data.datasets[0].backgroundColor = chartSubset.map(t => t.type === 'BUY' ? '#00f59b' : '#ff3b69');
             whaleChart.update('none');
+
+            // Heatmap
+            renderHeatmap(filtered);
         }
 
         // Chart.js
@@ -415,7 +558,7 @@
             } catch(e) {}
         }
 
-        // Bildirim İzni
+        // Masaüstü Bildirim
         function requestNotificationPerm() {
             if (!("Notification" in window)) {
                 alert("Tarayıcınız masaüstü bildirimlerini desteklemiyor.");
@@ -431,6 +574,93 @@
         function sendDesktopNotification(title, body) {
             if (notificationPerm && document.hidden) {
                 new Notification(title, { body: body, icon: "https://kadir-ozn.github.io/crypto-whale-radar/favicon.ico" });
+            }
+        }
+
+        // Bot / Webhook Entegrasyonu
+        function toggleBotModal() {
+            const modal = document.getElementById('botModal');
+            modal.classList.toggle('hidden');
+            document.getElementById('tgToken').value = botConfig.tgToken;
+            document.getElementById('tgChatId').value = botConfig.tgChatId;
+            document.getElementById('discordWebhook').value = botConfig.discordWebhook;
+            document.getElementById('botThreshold').value = botConfig.botThreshold;
+        }
+
+        function saveBotSettings() {
+            botConfig.tgToken = document.getElementById('tgToken').value.trim();
+            botConfig.tgChatId = document.getElementById('tgChatId').value.trim();
+            botConfig.discordWebhook = document.getElementById('discordWebhook').value.trim();
+            botConfig.botThreshold = parseFloat(document.getElementById('botThreshold').value) || 250000;
+
+            localStorage.setItem('tgToken', botConfig.tgToken);
+            localStorage.setItem('tgChatId', botConfig.tgChatId);
+            localStorage.setItem('discordWebhook', botConfig.discordWebhook);
+            localStorage.setItem('botThreshold', botConfig.botThreshold);
+
+            alert("✅ Bot ve Webhook ayarları başarıyla kaydedildi!");
+            toggleBotModal();
+        }
+
+        async function triggerBotAlert(message) {
+            let success = false;
+            // 1. Telegram Gönderimi (En Güvenilir URL Parametre Yolu)
+            if (botConfig.tgToken && botConfig.tgChatId) {
+                try {
+                    const url = `https://api.telegram.org/bot${botConfig.tgToken}/sendMessage?chat_id=${encodeURIComponent(botConfig.tgChatId)}&text=${encodeURIComponent(message)}&parse_mode=HTML`;
+                    const res = await fetch(url);
+                    const data = await res.json();
+                    if (data.ok) {
+                        success = true;
+                    } else {
+                        console.error("Telegram API Hatası:", data);
+                    }
+                } catch(e) { console.error("Telegram Hatası:", e); }
+            }
+
+            // 2. Discord Gönderimi
+            if (botConfig.discordWebhook) {
+                try {
+                    await fetch(botConfig.discordWebhook, {
+                        method: 'POST',
+                        headers: { 'Content-Type': 'application/json' },
+                        body: JSON.stringify({ content: message })
+                    });
+                    success = true;
+                } catch(e) { console.error("Discord Hatası:", e); }
+            }
+
+            return success;
+        }
+
+        async function testBotMessage() {
+            const token = document.getElementById('tgToken').value.trim();
+            const chatId = document.getElementById('tgChatId').value.trim();
+            const discord = document.getElementById('discordWebhook').value.trim();
+            const threshold = parseFloat(document.getElementById('botThreshold').value) || 250000;
+
+            if (!token || !chatId) {
+                alert("Lütfen Bot Token ve Chat ID alanlarını doldurun!");
+                return;
+            }
+
+            botConfig.tgToken = token;
+            botConfig.tgChatId = chatId;
+            botConfig.discordWebhook = discord;
+            botConfig.botThreshold = threshold;
+
+            localStorage.setItem('tgToken', token);
+            localStorage.setItem('tgChatId', chatId);
+            localStorage.setItem('discordWebhook', discord);
+            localStorage.setItem('botThreshold', threshold);
+
+            const testText = "🐋 <b>WHALERADAR PRO TEST ALARMI</b>\n\n✅ Tebrikler! Bot bağlantısı başarıyla kuruldu.\nArtık piyasadaki büyük balina alım/satımları anlık olarak buraya iletilecek.";
+            
+            const ok = await triggerBotAlert(testText);
+            if (ok) {
+                alert("✅ Başarılı! Telegram botundan test mesajı gönderildi. Telefonunuzu kontrol edin.");
+            } else {
+                alert("⚠️ Mesaj gönderilemedi! Lütfen Telegram'da botunuza gidip /start dediğinizden emin olun.");
             }
         }
 
@@ -462,13 +692,13 @@
             }
         }
 
-        // Likidasyon Kartı Basma
+        // Likidasyon Kartı
         function renderLiquidation(liq) {
             const container = document.getElementById('liqContainer');
             const emptyLiq = document.getElementById('emptyLiq');
             if (emptyLiq) emptyLiq.remove();
 
-            const isShortLiq = liq.side === 'BUY'; // Satın alınarak likit olan = Short Pozisyon Patladı
+            const isShortLiq = liq.side === 'BUY';
             const posType = isShortLiq ? 'SHORT LİKİT' : 'LONG LİKİT';
             const colorClass = isShortLiq ? 'border-whaleGreen/40 bg-whaleGreen/10 text-whaleGreen' : 'border-whaleRed/40 bg-whaleRed/10 text-whaleRed';
 
@@ -487,7 +717,7 @@
             container.insertBefore(card, container.firstChild);
             if (container.children.length > 30) container.removeChild(container.lastChild);
 
-            playSound(220, 0.4); // Derin likidasyon sesi
+            playSound(220, 0.4);
             sendDesktopNotification("💥 LİKİDASYON ALARMI!", `${liq.symbol}: $${liq.total_usd.toLocaleString()} ${posType}`);
         }
 
@@ -514,16 +744,13 @@
             document.body.removeChild(link);
         }
 
-        // WebSocket Motoru (Spot + Futures Liquidation)
+        // WebSocket Motoru
         function initWebSocket() {
             const badge = document.getElementById('connBadge');
             const text = document.getElementById('connText');
 
-            // 1. Spot Akışı (AggTrades)
             const spotStreams = COINS.map(c => `${c.symbol.toLowerCase()}@aggTrade`).join('/');
             const spotWs = new WebSocket(`wss://stream.binance.com:9443/stream?streams=${spotStreams}`);
-
-            // 2. Futures Likidasyon Akışı (All Liquidation Stream)
             const fapiWs = new WebSocket('wss://fstream.binance.com/ws/!forceOrder@arr');
 
             spotWs.onopen = () => {
@@ -565,9 +792,15 @@
                     renderTableRow(whale, true);
                     playSound(whale.type === 'BUY' ? 880 : 440);
 
-                    // Eşik üstü büyük bildirim
+                    // Masaüstü Bildirim
                     if (whale.total_usd >= 100000) {
                         sendDesktopNotification(`🚨 BÜYÜK BALİNA (${whale.symbol})`, `${whale.type} | $${whale.total_usd.toLocaleString()} @ $${whale.price}`);
+                    }
+
+                    // Bot Bildirimi
+                    if (whale.total_usd >= botConfig.botThreshold) {
+                        const botMsg = `🐋 <b>MEGA BALİNA ALARMI!</b>\n\n<b>Parite:</b> ${whale.symbol}\n<b>Tür:</b> ${whale.type === 'BUY' ? '🟢 ALIM' : '🔴 SATIM'}\n<b>Tutar:</b> $${whale.total_usd.toLocaleString()}\n<b>Fiyat:</b> $${whale.price.toLocaleString()}`;
+                        triggerBotAlert(botMsg);
                     }
 
                     recalculateAndRender();
@@ -583,7 +816,6 @@
                 const qty = parseFloat(o.q);
                 const total_usd = price * qty;
 
-                // $1,000 üzerindeki likidasyonları yakala
                 if (total_usd >= 1000) {
                     const liqData = {
                         symbol: o.s,
@@ -605,7 +837,6 @@
             };
         }
 
-        // Başlat
         renderSidebar();
         initWebSocket();
     </script>
