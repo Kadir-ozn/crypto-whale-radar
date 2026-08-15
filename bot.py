@@ -76,7 +76,7 @@ class HealthCheckHandler(BaseHTTPRequestHandler):
         self.send_response(200)
         self.send_header("Content-type", "text/plain; charset=utf-8")
         self.end_headers()
-        self.wfile.write(b"WhaleRadar Turbo Engine OK")
+        self.wfile.write(b"WhaleMetric Turbo Engine OK")
 
     def log_message(self, format, *args):
         return
@@ -199,12 +199,12 @@ def handle_telegram_command(cmd_text, sender_id):
         bot_state["enabled"] = False
         clear_outbox()
         save_current_state()
-        send_telegram_msg("🛑 <b>WhaleRadar Susturuldu!</b>", sender_id)
+        send_telegram_msg("🛑 <b>WhaleMetric Susturuldu!</b>", sender_id)
 
     elif c in ["baslat", "start", "ac", "calistir", "cmd_start"]:
         bot_state["enabled"] = True
         save_current_state()
-        send_telegram_msg(f"▶️ <b>WhaleRadar Turbo Aktif!</b>\n\n• <b>Eşik:</b> ${CURRENT_THRESHOLD:,.0f}\n• <b>İzlenen:</b> {format_coin_list(bot_state['tracked_coins'])}", sender_id)
+        send_telegram_msg(f"▶️ <b>WhaleMetric Turbo Aktif!</b>\n\n• <b>Eşik:</b> ${CURRENT_THRESHOLD:,.0f}\n• <b>İzlenen:</b> {format_coin_list(bot_state['tracked_coins'])}", sender_id)
 
     elif c in ["sifirla", "reset", "cmd_reset"]:
         bot_state["enabled"] = True
@@ -218,13 +218,13 @@ def handle_telegram_command(cmd_text, sender_id):
 
     elif c in ["menu", "kumanda", "yardim", "help", "cmd_main_menu"]:
         send_telegram_msg(
-            f"🎮 <b>WHALERADAR TURBO PANEL</b>\n\n• <b>Eşik:</b> <code>${CURRENT_THRESHOLD:,.0f}</code>\n• <b>Durum:</b> {'🟢 Aktif' if bot_state['enabled'] else '🔴 Kapalı'}\n• <b>Coinler:</b> <code>{format_coin_list(bot_state['tracked_coins'])}</code>",
+            f"🎮 <b>WHALEMETRIC TURBO PANEL</b>\n\n• <b>Eşik:</b> <code>${CURRENT_THRESHOLD:,.0f}</code>\n• <b>Durum:</b> {'🟢 Aktif' if bot_state['enabled'] else '🔴 Kapalı'}\n• <b>Coinler:</b> <code>{format_coin_list(bot_state['tracked_coins'])}</code>",
             sender_id,
             inline_keyboard=get_control_keyboard()
         )
 
     elif c in ["coin", "coinler", "parite", "cmd_coin_menu"]:
-        send_telegram_msg(f"🪙 <b>COIN YÖNETİMİ</b>\n<code>{format_coin_list(bot_state['tracked_coins'])}</code>", sender_id, inline_keyboard=get_coin_keyboard())
+        send_telegram_msg(f"🪙 <b>COİN YÖNETİMİ</b>\n<code>{format_coin_list(bot_state['tracked_coins'])}</code>", sender_id, inline_keyboard=get_coin_keyboard())
 
     elif c == "cmd_only_btc":
         bot_state["tracked_coins"] = ["BTCUSDT"]
@@ -392,7 +392,7 @@ async def crypto_websocket_task():
 # ÇALIŞTIRICI
 # ----------------------------------------------------
 if __name__ == "__main__":
-    log(f"WhaleRadar Turbo Engine Başlatıldı. Eşik: ${CURRENT_THRESHOLD:,.0f}")
+    log(f"WhaleMetric Turbo Engine Başlatıldı. Eşik: ${CURRENT_THRESHOLD:,.0f}")
     
     threading.Thread(target=run_http_server, daemon=True).start()
     threading.Thread(target=telegram_worker, daemon=True).start()

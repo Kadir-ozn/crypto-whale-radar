@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>WhaleRadar Pro Terminal v4.3 | Remote Bot Controller</title>
+    <title>WhaleMetric Pro Terminal v4.3 | Remote Bot Controller</title>
     <!-- Tailwind CSS CDN -->
     <script src="https://cdn.tailwindcss.com"></script>
     <!-- TradingView Lightweight Charts (v4.1.3) -->
@@ -66,7 +66,7 @@
         <div class="flex items-center gap-3">
             <span class="text-2xl animate-bounce">🐋</span>
             <div>
-                <h1 class="text-base font-bold tracking-wider text-white leading-none">WHALE<span class="text-accentBlue">RADAR</span> <span class="text-[10px] px-1.5 py-0.5 rounded bg-accentBlue/20 text-accentBlue font-mono border border-accentBlue/30">REMOTE v4.3</span></h1>
+                <h1 class="text-base font-bold tracking-wider text-white leading-none">WHALE<span class="text-accentBlue">METRIC</span> <span class="text-[10px] px-1.5 py-0.5 rounded bg-accentBlue/20 text-accentBlue font-mono border border-accentBlue/30">REMOTE v4.3</span></h1>
                 <p class="text-[10px] text-slate-400 font-mono mt-0.5">Candlestick Tape • Telegram 2-Way Remote</p>
             </div>
         </div>
@@ -468,7 +468,7 @@
                 ]
             ];
 
-            const msg = `🎮 <b>WHALERADAR TELEFON KUMANDASI</b>\n\nAşağıdaki butonlara basarak veya doğrudan mesaj yazarak terminali yönetebilirsiniz:\n• <code>/dur</code> : Botu susturur\n• <code>/baslat</code> : Tekrar açar\n• <code>/esik 100k</code> : Eşiği değiştirir\n• <code>/durum</code> : Anlık rapor verir`;
+            const msg = `🎮 <b>WHALEMETRIC TELEFON KUMANDASI</b>\n\nAşağıdaki butonlara basarak veya doğrudan mesaj yazarak terminali yönetebilirsiniz:\n• <code>/dur</code> : Botu susturur\n• <code>/baslat</code> : Tekrar açar\n• <code>/esik 100k</code> : Eşiği değiştirir\n• <code>/durum</code> : Anlık rapor verir`;
             await sendTelegramMessage(msg, kb);
             alert("📱 Telefonunuza interaktif kumanda butonları gönderildi!");
         }
@@ -523,13 +523,13 @@
                 botConfig.enabled = false;
                 localStorage.setItem('botEnabled', false);
                 syncBotBadge();
-                sendTelegramMessage("🛑 <b>WhaleRadar Susturuldu!</b>\nArtık bildirim gönderilmeyecek. Tekrar açmak için <code>/baslat</code> yazın veya menüyü kullanın.");
+                sendTelegramMessage("🛑 <b>WhaleMetric Susturuldu!</b>\nArtık bildirim gönderilmeyecek. Tekrar açmak için <code>/baslat</code> yazın veya menüyü kullanın.");
             }
             else if (c === '/baslat' || c === '/start' || c === 'cmd_start') {
                 botConfig.enabled = true;
                 localStorage.setItem('botEnabled', true);
                 syncBotBadge();
-                sendTelegramMessage(`▶️ <b>WhaleRadar Aktif Edildi!</b>\nAlarm Eşiği: <b>$${botConfig.botThreshold.toLocaleString()}</b>\nBüyük balina hareketleri anında buraya iletilecek.`);
+                sendTelegramMessage(`▶️ <b>WhaleMetric Aktif Edildi!</b>\nAlarm Eşiği: <b>$${botConfig.botThreshold.toLocaleString()}</b>\nBüyük balina hareketleri anında buraya iletilecek.`);
             }
             else if (c === '/menu' || c === 'menu') {
                 sendInteractiveMenu();
@@ -540,7 +540,7 @@
                 const cvd = document.getElementById('cvdValue').innerText;
                 const buyPct = document.getElementById('buyRatio').innerText;
 
-                const report = `📊 <b>WHALERADAR DURUM RAPORU</b>\n\n` +
+                const report = `📊 <b>WHALEMETRIC DURUM RAPORU</b>\n\n` +
                                `• <b>Bot Durumu:</b> ${botConfig.enabled ? '🟢 AKTİF' : '🔴 SUSTURULDU'}\n` +
                                `• <b>Alarm Limiti:</b> $${botConfig.botThreshold.toLocaleString()}\n` +
                                `• <b>Aktif Parite:</b> ${activeSymbol}\n` +
@@ -1028,7 +1028,7 @@
             const encodedUri = encodeURI(csvContent);
             const link = document.createElement("a");
             link.setAttribute("href", encodedUri);
-            link.setAttribute("download", `whale_radar_${activeSymbol}_${new Date().toISOString().slice(0,10)}.csv`);
+            link.setAttribute("download", `whale_metric_${activeSymbol}_${new Date().toISOString().slice(0,10)}.csv`);
             document.body.appendChild(link);
             link.click();
             document.body.removeChild(link);
