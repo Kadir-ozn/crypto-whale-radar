@@ -4,37 +4,10 @@ import time
 import asyncio
 import requests
 import websockets
-from http.server import HTTPServer, BaseHTTPRequestHandler
-import threading
 
-# ----------------------------------------------------
-# RENDER HEALTH CHECK HTTP SUNUCUSU (PORT BINDING)
-# ----------------------------------------------------
-class HealthCheckHandler(BaseHTTPRequestHandler):
-    def do_GET(self):
-        self.send_response(200)
-        self.send_header("Content-type", "text/plain; charset=utf-8")
-        self.end_headers()
-        self.wfile.write(b"WhaleRadar 7/24 Cloud Bot Aktif!")
+# Render Portu (Render otomatik verir, varsayılan 10000)
+PORT = int(os.environ.get("PORT", 10000))
 
-    def log_message(self, format, *args):
-        # Render loglarını gereksiz HTTP GET loglarıyla doldurmamak için
-        return
-
-def start_http_server():
-    # Render varsayılan olarak PORT ortam değişkenini atar, yoksa 10000 kullanır
-    port = int(os.environ.get("PORT", 10000))
-    server = HTTPServer(("0.0.0.0", port), HealthCheckHandler)
-    print(f"[Render HTTP] 0.0.0.0:{port} portu başarıyla dinleniyor (Live)")
-    server.serve_forever()
-
-# HTTP sunucusunu ana döngü başlamadan önce ayrı bir thread'de hemen başlatıyoruz
-http_thread = threading.Thread(target=start_http_server, daemon=True)
-http_thread.start()
-
-# ----------------------------------------------------
-# BOT VE BINANCE MOTORU
-# ----------------------------------------------------
 TELEGRAM_BOT_TOKEN = os.getenv("TELEGRAM_BOT_TOKEN", "8623857901:AAH2mMnEC4qMjG3fdpimhZyA4bFDgTqvugM")
 TELEGRAM_CHAT_ID = os.getenv("TELEGRAM_CHAT_ID", "")
 
@@ -52,6 +25,40 @@ COIN_LIST = [
     "nearusdt", "arbusdt", "opusdt", "pepeusdt", "shibusdt"
 ]
 
+# ----------------------------------------------------
+# 1. RENDER PORT DİNLEYİCİSİ (SAF ASYNC HTTP)
+# ----------------------------------------------------
+async def handle_http_request(reader, writer):
+    """Render'ın 'Live' kontrolü için HTTP isteğini anında yanıtlar."""
+    try:
+        await reader.read(1024)
+        response = (
+            "HTTP/1.1 200 OK\r\n"
+            "Content-Type: text/plain; charset=utf-8\r\n"
+            "Content-Length: 30\r\n"
+            "Connection: close\r\n\r\n"
+            "WhaleRadar 7/24 Cloud Bot OK!"
+        )
+        writer.write(response.encode("utf-8"))
+        await writer.drain()
+    except Exception:
+        pass
+    finally:
+        writer.close()
+        try:
+            await writer.wait_closed()
+        except Exception:
+            pass
+
+async def start_render_health_server():
+    server = await asyncio.start_server(handle_http_request, "0.0.0.0", PORT)
+    print(f"[Render HTTP] 0.0.0.0:{PORT} portu açıldı ve dinleniyor! (Live)")
+    async with server:
+        await server.serve_forever()
+
+# ----------------------------------------------------
+# 2. TELEGRAM BİLDİRİM VE KOMUT MOTORU
+# ----------------------------------------------------
 def send_telegram_msg(text, inline_keyboard=None):
     if not TELEGRAM_BOT_TOKEN or not TELEGRAM_CHAT_ID:
         return
@@ -61,7 +68,7 @@ def send_telegram_msg(text, inline_keyboard=None):
         payload["reply_markup"] = {"inline_keyboard": inline_keyboard}
     try:
         requests.post(url, json=payload, timeout=5)
-    except:
+    except Exception:
         pass
 
 def parse_smart_amount(text):
@@ -76,22 +83,23 @@ def parse_smart_amount(text):
             t = t[:-1]
         val = float(t)
         return val * mult
-    except:
+    except Exception:
         return None
 
 def handle_telegram_command(cmd_text):
     global bot_state
     c = cmd_text.lower().strip()
-    if c.startswith("/"): c = c[1:].strip()
+    if c.startswith("/"):
+        c = c[1:].strip()
 
     if c in ["dur", "stop", "durdur", "kapat", "cmd_stop"]:
         bot_state["enabled"] = False
         send_telegram_msg("🛑 <b>WhaleRadar Bulut Servisi Susturuldu!</b>\nTekrar açmak için <code>baslat</code> yazın.")
-        
+
     elif c in ["baslat", "start", "ac", "calistir", "cmd_start"]:
         bot_state["enabled"] = True
         send_telegram_msg(f"▶️ <b>WhaleRadar 7/24 Bulut Aktif!</b>\nAlarm Eşiği: <b>${bot_state['threshold']:,.0f}</b>")
-        
+
     elif c in ["sifirla", "reset", "cmd_reset"]:
         bot_state["enabled"] = True
         bot_state["threshold"] = 250000
@@ -153,10 +161,13 @@ async def telegram_poller_task():
                         elif "message" in update and "text" in update["message"]:
                             if str(update["message"]["from"]["id"]) == str(TELEGRAM_CHAT_ID):
                                 handle_telegram_command(update["message"]["text"])
-        except:
+        except Exception:
             pass
         await asyncio.sleep(2)
 
+# ----------------------------------------------------
+# 3. BINANCE WEBSOCKET AKIŞI
+# ----------------------------------------------------
 async def binance_websocket_task():
     global bot_state
     streams = "/".join([f"{coin}@aggTrade" for coin in COIN_LIST])
@@ -169,7 +180,8 @@ async def binance_websocket_task():
                 while True:
                     msg = await ws.recv()
                     data = json.loads(msg).get("data")
-                    if not data or "s" not in data: continue
+                    if not data or "s" not in data:
+                        continue
 
                     symbol = data["s"]
                     price = float(data["p"])
@@ -183,15 +195,28 @@ async def binance_websocket_task():
                         if now - bot_state["last_alert_time"] >= 2:
                             bot_state["last_alert_time"] = now
                             icon = "🟢 ALIM" if trade_type == "BUY" else "🔴 SATIM"
-                            alert_msg = f"🐋 <b>7/24 CLOUD BALİNA ALARMI!</b>\n\n<b>Parite:</b> {symbol}\n<b>Tür:</b> {icon}\n<b>Tutar:</b> ${total_usd:,.0f}\n<b>Fiyat:</b> ${price:,.2f}"
+                            alert_msg = (
+                                f"🐋 <b>7/24 CLOUD BALİNA ALARMI!</b>\n\n"
+                                f"<b>Parite:</b> {symbol}\n"
+                                f"<b>Tür:</b> {icon}\n"
+                                f"<b>Tutar:</b> ${total_usd:,.0f}\n"
+                                f"<b>Fiyat:</b> ${price:,.2f}"
+                            )
                             send_telegram_msg(alert_msg)
-        except Exception as e:
-            print(f"[Binance Hatası] {e}. Yeniden bağlanıyor...")
+        except Exception:
             await asyncio.sleep(3)
 
+# ----------------------------------------------------
+# ANA ÇALIŞTIRICI
+# ----------------------------------------------------
 async def main():
     send_telegram_msg("🚀 <b>WhaleRadar 7/24 Bulut Servisi Başlatıldı!</b>\nBilgisayar kapalıyken de çalışır.")
-    await asyncio.gather(telegram_poller_task(), binance_websocket_task())
+    # Port sunucusu, Telegram dinleyicisi ve Binance WS aynı anda başlar
+    await asyncio.gather(
+        start_render_health_server(),
+        telegram_poller_task(),
+        binance_websocket_task()
+    )
 
 if __name__ == "__main__":
     asyncio.run(main())
