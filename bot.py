@@ -57,6 +57,8 @@ def save_current_state():
         pass
 
 bot_state = load_saved_state()
+CURRENT_THRESHOLD = float(bot_state["threshold"])
+
 if bot_state.get("chat_id"):
     TELEGRAM_CHAT_ID = str(bot_state["chat_id"])
 
@@ -110,11 +112,19 @@ def telegram_worker():
 def send_telegram_msg(text, target_chat_id=None, inline_keyboard=None):
     telegram_outbox.put((text, target_chat_id, inline_keyboard))
 
+def clear_outbox():
+    """Eşik değişince kuyrukta birikmiş eski alarmları anında temizler"""
+    while not telegram_outbox.empty():
+        try:
+            telegram_outbox.get_nowait()
+            telegram_outbox.task_done()
+        except Exception:
+            break
+
 # ----------------------------------------------------
 # 4. KESİN EŞİK AYRIŞTIRICI
 # ----------------------------------------------------
 def extract_threshold_value(text):
-    """Metin içindeki eşik değerini kesinlikle yakalar (Örn: 10k, esik 25k, 50000, 1.5m)."""
     t = text.lower().replace(",", "").replace("$", "").replace("esik", "").replace("limit", "").strip()
     match = re.search(r'^([0-9]+(?:\.[0-9]+)?)\s*([km])?$', t)
     if match:
@@ -152,10 +162,10 @@ def get_coin_keyboard():
     ]
 
 # ----------------------------------------------------
-# 5. TELEGRAM KOMUT MOTORU (ÖNCELİK SIRALAMASI DÜZELTİLDİ)
+# 5. TELEGRAM KOMUT MOTORU
 # ----------------------------------------------------
 def handle_telegram_command(cmd_text, sender_id):
-    global bot_state, TELEGRAM_CHAT_ID, tracked_coins_set, ws_subscribe_queue
+    global bot_state, TELEGRAM_CHAT_ID, tracked_coins_set, ws_subscribe_queue, CURRENT_THRESHOLD
     TELEGRAM_CHAT_ID = str(sender_id)
     bot_state["chat_id"] = str(sender_id)
     raw = cmd_text.strip()
@@ -164,12 +174,14 @@ def handle_telegram_command(cmd_text, sender_id):
 
     log(f"Komut: '{raw}' | Kullanıcı: {sender_id}")
 
-    # 1. ÖNCE EŞİK KONTROLÜ YAPILIR (10k, 25k, esik 50k vb.)
+    # 1. EŞİK GİRİŞİ (10k, esik 10k, 25k vb.)
     possible_thresh = extract_threshold_value(c)
     if possible_thresh is not None and possible_thresh >= 500:
-        bot_state["threshold"] = float(possible_thresh)
+        CURRENT_THRESHOLD = float(possible_thresh)
+        bot_state["threshold"] = CURRENT_THRESHOLD
+        clear_outbox()
         save_current_state()
-        send_telegram_msg(f"🎯 <b>Alarm eşiği güncellendi:</b>\n👉 <b>${possible_thresh:,.0f}</b>\n\nArtık bu tutarın altındaki işlemler filtrelenecektir.", sender_id)
+        send_telegram_msg(f"🎯 <b>Alarm eşiği güncellendi:</b>\n👉 <b>${CURRENT_THRESHOLD:,.0f}</b>\n\nArtık bu tutarın altındaki işlemler filtrelenecektir.", sender_id)
         return
 
     # 2. Buton Eşikleri
@@ -177,33 +189,38 @@ def handle_telegram_command(cmd_text, sender_id):
         val_map = {"2k": 2000.0, "10k": 10000.0, "50k": 50000.0, "100k": 100000.0, "250k": 250000.0, "500k": 500000.0, "1m": 1000000.0}
         key = c.replace("cmd_set_", "")
         if key in val_map:
-            bot_state["threshold"] = float(val_map[key])
+            CURRENT_THRESHOLD = float(val_map[key])
+            bot_state["threshold"] = CURRENT_THRESHOLD
+            clear_outbox()
             save_current_state()
-            send_telegram_msg(f"🎯 <b>Alarm eşiği güncellendi:</b> ${val_map[key]:,.0f}", sender_id)
+            send_telegram_msg(f"🎯 <b>Alarm eşiği güncellendi:</b> ${CURRENT_THRESHOLD:,.0f}", sender_id)
             return
 
     # 3. Temel Sistem Komutları
     if c in ["dur", "stop", "durdur", "kapat", "cmd_stop"]:
         bot_state["enabled"] = False
+        clear_outbox()
         save_current_state()
         send_telegram_msg("🛑 <b>WhaleRadar Susturuldu!</b>", sender_id)
 
     elif c in ["baslat", "start", "ac", "calistir", "cmd_start"]:
         bot_state["enabled"] = True
         save_current_state()
-        send_telegram_msg(f"▶️ <b>WhaleRadar Aktif!</b>\n\n• <b>Eşik:</b> ${bot_state['threshold']:,.0f}\n• <b>İzlenen:</b> {format_coin_list(bot_state['tracked_coins'])}", sender_id)
+        send_telegram_msg(f"▶️ <b>WhaleRadar Aktif!</b>\n\n• <b>Eşik:</b> ${CURRENT_THRESHOLD:,.0f}\n• <b>İzlenen:</b> {format_coin_list(bot_state['tracked_coins'])}", sender_id)
 
     elif c in ["sifirla", "reset", "cmd_reset"]:
         bot_state["enabled"] = True
+        CURRENT_THRESHOLD = 100000.0
         bot_state["threshold"] = 100000.0
         bot_state["tracked_coins"] = list(DEFAULT_COINS)
         tracked_coins_set = set(DEFAULT_COINS)
+        clear_outbox()
         save_current_state()
         send_telegram_msg("🔄 <b>Ayarlar Sıfırlandı!</b>\n• Eşik: $100,000\n• Coinler: 15 Büyük Kripto", sender_id)
 
     elif c in ["menu", "kumanda", "yardim", "help", "cmd_main_menu"]:
         send_telegram_msg(
-            f"🎮 <b>WHALERADAR KONTROL PANELİ</b>\n\n• <b>Mevcut Eşik:</b> <code>${bot_state['threshold']:,.0f}</code>\n• <b>Durum:</b> {'🟢 Aktif' if bot_state['enabled'] else '🔴 Kapalı'}\n• <b>Coinler:</b> <code>{format_coin_list(bot_state['tracked_coins'])}</code>",
+            f"🎮 <b>WHALERADAR KONTROL PANELİ</b>\n\n• <b>Mevcut Eşik:</b> <code>${CURRENT_THRESHOLD:,.0f}</code>\n• <b>Durum:</b> {'🟢 Aktif' if bot_state['enabled'] else '🔴 Kapalı'}\n• <b>Coinler:</b> <code>{format_coin_list(bot_state['tracked_coins'])}</code>",
             sender_id,
             inline_keyboard=get_control_keyboard()
         )
@@ -247,11 +264,10 @@ def handle_telegram_command(cmd_text, sender_id):
 
     elif c in ["durum", "status", "rapor", "cmd_status"]:
         send_telegram_msg(
-            f"☁️ <b>BULUT DURUM RAPORU</b>\n\n• <b>Durum:</b> {'🟢 AKTİF' if bot_state['enabled'] else '🔴 KAPALI'}\n• <b>Aktif Eşik:</b> <b>${bot_state['threshold']:,.0f}</b>\n• <b>İzlenen:</b> <code>{format_coin_list(bot_state['tracked_coins'])}</code>",
+            f"☁️ <b>BULUT DURUM RAPORU</b>\n\n• <b>Durum:</b> {'🟢 AKTİF' if bot_state['enabled'] else '🔴 KAPALI'}\n• <b>Aktif Eşik:</b> <b>${CURRENT_THRESHOLD:,.0f}</b>\n• <b>İzlenen:</b> <code>{format_coin_list(bot_state['tracked_coins'])}</code>",
             sender_id
         )
 
-    # 4. Dinamik Coin Ekle / Çıkar
     elif c.startswith("ekle ") or c.startswith("add "):
         tokens = re.sub(r'^(ekle|add)\s+', '', c).replace(",", " ").split()
         for t in tokens:
@@ -276,7 +292,6 @@ def handle_telegram_command(cmd_text, sender_id):
         save_current_state()
         send_telegram_msg(f"🗑️ <b>Kalan Liste:</b> <code>{format_coin_list(bot_state['tracked_coins'])}</code>", sender_id)
 
-    # 5. Sadece Belirli Coinleri Seçme (btc, sol, btc eth)
     elif any(k in c for k in ["sadece ", "only "]) or (c.replace(" ", "").isalpha() and len(c) <= 20):
         tokens = re.sub(r'^(sadece|only)\s+', '', c).replace(",", " ").split()
         new_list = [normalize_coin_symbol(t) for t in tokens if t]
@@ -320,7 +335,7 @@ def telegram_poller_loop():
 # 7. BYBIT WEBSOCKET AKIŞI
 # ----------------------------------------------------
 async def crypto_websocket_task():
-    global ws_subscribe_queue
+    global ws_subscribe_queue, CURRENT_THRESHOLD
     ws_url = "wss://stream.bybit.com/v5/public/spot"
 
     while True:
@@ -354,7 +369,7 @@ async def crypto_websocket_task():
                     if not trades or not isinstance(trades, list):
                         continue
 
-                    current_active_threshold = float(bot_state["threshold"])
+                    active_limit = CURRENT_THRESHOLD
 
                     for trade in trades:
                         sym = trade.get("s", "").upper()
@@ -365,14 +380,14 @@ async def crypto_websocket_task():
                         qty = float(trade.get("v", 0))
                         total_usd = price * qty
 
-                        # ANLIK EŞİK KONTROLÜ
-                        if bot_state["enabled"] and total_usd >= current_active_threshold:
+                        # ANLIK EŞİK KONTROLÜ (GÜNCEL SAYI İLE)
+                        if bot_state["enabled"] and total_usd >= active_limit:
                             now = time.time()
                             if now - bot_state["last_alert_time"] >= 0.5:
                                 bot_state["last_alert_time"] = now
                                 is_buy = trade.get("S", "").upper() == "BUY"
                                 icon = "🟢 ALIM" if is_buy else "🔴 SATIM"
-                                thresh_display = f"${int(current_active_threshold/1000)}k" if current_active_threshold >= 1000 else f"${int(current_active_threshold)}"
+                                thresh_display = f"${int(active_limit/1000)}k" if active_limit >= 1000 else f"${int(active_limit)}"
                                 alert_msg = (
                                     f"🐋 <b>BALİNA ALARMI (>{thresh_display})</b>\n\n"
                                     f"<b>Parite:</b> {sym}\n"
@@ -382,14 +397,14 @@ async def crypto_websocket_task():
                                 )
                                 send_telegram_msg(alert_msg)
         except Exception as e:
-            log(f"WS Bağlantı Hatası: {e}. Yeniden bağlanılıyor...")
+            log(f"WS Hatası: {e}. Yeniden bağlanılıyor...")
             await asyncio.sleep(2)
 
 # ----------------------------------------------------
 # ÇALIŞTIRICI
 # ----------------------------------------------------
 if __name__ == "__main__":
-    log(f"WhaleRadar Başlatıldı. Eşik: ${bot_state['threshold']:,.0f}")
+    log(f"WhaleRadar Başlatıldı. Eşik: ${CURRENT_THRESHOLD:,.0f}")
     
     threading.Thread(target=run_http_server, daemon=True).start()
     threading.Thread(target=telegram_worker, daemon=True).start()
