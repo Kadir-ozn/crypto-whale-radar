@@ -1,13 +1,12 @@
-
 <!DOCTYPE html>
 <html lang="tr" class="dark theme-navy">
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>WhaleRadar Pro Terminal v4 | Candlestick Edition</title>
+    <title>WhaleRadar Pro Terminal v4.3 | Remote Bot Controller</title>
     <!-- Tailwind CSS CDN -->
     <script src="https://cdn.tailwindcss.com"></script>
-    <!-- TradingView Lightweight Charts (Sabit Kararlı Sürüm v4.1.3) -->
+    <!-- TradingView Lightweight Charts (v4.1.3) -->
     <script src="https://unpkg.com/lightweight-charts@4.1.3/dist/lightweight-charts.standalone.production.js"></script>
     <script>
         tailwind.config = {
@@ -28,30 +27,37 @@
         }
     </script>
     <style>
-        :root.theme-navy {
-            --bg-main: #090d16;
-            --bg-card: #131926;
-            --border-color: #20293a;
-            --accent-color: #3b82f6;
-        }
-        :root.theme-cyber {
-            --bg-main: #050807;
-            --bg-card: #0c1410;
-            --border-color: #173322;
-            --accent-color: #00ff88;
-        }
-        :root.theme-slate {
-            --bg-main: #11141a;
-            --bg-card: #1c212c;
-            --border-color: #2e3748;
-            --accent-color: #eab308;
-        }
+    @import url('https://fonts.googleapis.com/css2?family=Montserrat:ital,wght@0,300;0,400;0,600;0,700;1,400&display=swap');
 
-        ::-webkit-scrollbar { width: 5px; height: 5px; }
-        ::-webkit-scrollbar-track { background: var(--bg-main); }
-        ::-webkit-scrollbar-thumb { background: var(--border-color); border-radius: 4px; }
-        ::-webkit-scrollbar-thumb:hover { background: var(--accent-color); }
-    </style>
+    /* Sayfadaki HER ŞEYİ (input, button, p, h1 vb.) Montserrat yapmaya zorlar */
+    *, *::before, *::after, body, input, button, select, textarea {
+        font-family: 'Montserrat', sans-serif !important;
+    }
+
+    :root.theme-navy {
+        --bg-main: #090d16;
+        --bg-card: #131926;
+        --border-color: #20293a;
+        --accent-color: #3b82f6;
+    }
+    :root.theme-cyber {
+        --bg-main: #050807;
+        --bg-card: #0c1410;
+        --border-color: #173322;
+        --accent-color: #00ff88;
+    }
+    :root.theme-slate {
+        --bg-main: #11141a;
+        --bg-card: #1c212c;
+        --border-color: #2e3748;
+        --accent-color: #eab308;
+    }
+
+    ::-webkit-scrollbar { width: 5px; height: 5px; }
+    ::-webkit-scrollbar-track { background: var(--bg-main); }
+    ::-webkit-scrollbar-thumb { background: var(--border-color); border-radius: 4px; }
+    ::-webkit-scrollbar-thumb:hover { background: var(--accent-color); }
+</style>
 </head>
 <body class="bg-darkBg text-slate-200 font-sans h-screen flex flex-col overflow-hidden transition-colors duration-300">
 
@@ -60,8 +66,8 @@
         <div class="flex items-center gap-3">
             <span class="text-2xl animate-bounce">🐋</span>
             <div>
-                <h1 class="text-base font-bold tracking-wider text-white leading-none">WHALE<span class="text-accentBlue">RADAR</span> <span class="text-[10px] px-1.5 py-0.5 rounded bg-accentBlue/20 text-accentBlue font-mono border border-accentBlue/30">PRO v4</span></h1>
-                <p class="text-[10px] text-slate-400 font-mono mt-0.5">Candlestick Tape • Balina Bubble • Voice Anons</p>
+                <h1 class="text-base font-bold tracking-wider text-white leading-none">WHALE<span class="text-accentBlue">RADAR</span> <span class="text-[10px] px-1.5 py-0.5 rounded bg-accentBlue/20 text-accentBlue font-mono border border-accentBlue/30">REMOTE v4.3</span></h1>
+                <p class="text-[10px] text-slate-400 font-mono mt-0.5">Candlestick Tape • Telegram 2-Way Remote</p>
             </div>
         </div>
 
@@ -79,9 +85,10 @@
                 <option value="theme-slate">🏛️ Bloomberg Slate</option>
             </select>
 
-            <!-- Telegram / Discord Bot Butonu -->
-            <button onclick="toggleBotModal()" class="px-2.5 py-1 bg-darkBg hover:bg-darkBorder border border-darkBorder rounded text-xs text-slate-300 transition flex items-center gap-1">
-                🤖 <span>Bot</span>
+            <!-- Telegram Bot Butonu & Canlı Durum -->
+            <button id="botStatusBtn" onclick="toggleBotModal()" class="px-2.5 py-1 bg-darkBg hover:bg-darkBorder border border-darkBorder rounded text-xs text-slate-300 transition flex items-center gap-1.5">
+                <span id="botLed" class="w-2 h-2 rounded-full bg-slate-500"></span>
+                <span id="botStatusText">Bot: Kapalı</span>
             </button>
 
             <!-- Robotik Sesli Anons Butonu -->
@@ -189,7 +196,7 @@
 
             <!-- 3. TRADINGVIEW MUM GRAFİĞİ & HEATMAP -->
             <div class="grid grid-cols-1 lg:grid-cols-3 gap-3 shrink-0 h-72">
-                <!-- Canlı Mum Grafiği (Candlestick + Balina Markers) -->
+                <!-- Canlı Mum Grafiği -->
                 <div class="lg:col-span-2 bg-darkCard p-2.5 rounded-lg border border-darkBorder flex flex-col overflow-hidden">
                     <div class="flex justify-between items-center mb-1.5 px-1">
                         <div class="flex items-center gap-2">
@@ -265,36 +272,84 @@
         </main>
     </div>
 
-    <!-- BOT & WEBHOOK MODAL -->
+    <!-- BOT KONTROL MODAL -->
     <div id="botModal" class="fixed inset-0 bg-black/70 backdrop-blur-sm z-50 hidden flex items-center justify-center p-4">
-        <div class="bg-darkCard border border-darkBorder w-full max-w-md rounded-xl p-5 shadow-2xl space-y-4">
+        <div class="bg-darkCard border border-darkBorder w-full max-w-lg rounded-xl p-5 shadow-2xl space-y-4">
+            
             <div class="flex justify-between items-center border-b border-darkBorder pb-3">
-                <h3 class="font-bold text-white flex items-center gap-2">🤖 <span>Telegram / Discord Bildirim Botu</span></h3>
+                <div>
+                    <h3 class="font-bold text-white flex items-center gap-2 text-sm">🤖 <span>Telegram Uzaktan Yönetim Merkezi</span></h3>
+                    <p class="text-[11px] text-slate-400">Telefondan /dur, /baslat, /menu komutlarıyla yönetilebilir</p>
+                </div>
                 <button onclick="toggleBotModal()" class="text-slate-400 hover:text-white text-lg font-bold">✕</button>
             </div>
+
+            <!-- Master ON/OFF Switch -->
+            <div class="flex items-center justify-between p-3 bg-darkBg border border-darkBorder rounded-lg">
+                <div>
+                    <div class="text-xs font-bold text-white">Bot Bildirimlerini Çalıştır</div>
+                    <div class="text-[10px] text-slate-400">Tek tıkla botu tamamen sustur veya devreye al</div>
+                </div>
+                <label class="relative inline-flex items-center cursor-pointer">
+                    <input type="checkbox" id="botEnabledToggle" onchange="onBotToggleChange(this.checked)" class="sr-only peer">
+                    <div class="w-11 h-6 bg-slate-700 peer-focus:outline-none rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-slate-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-emerald-500"></div>
+                </label>
+            </div>
             
-            <div class="space-y-3 text-xs font-mono">
+            <!-- Bot Ayarları Formu -->
+            <div class="grid grid-cols-1 md:grid-cols-2 gap-3 text-xs font-mono">
                 <div>
                     <label class="block text-slate-400 mb-1">Telegram Bot Token:</label>
-                    <input type="text" id="tgToken" placeholder="örn: 8623857901:AAH2mMnEC4qMjG3..." class="w-full bg-darkBg border border-darkBorder rounded px-3 py-2 text-white focus:outline-none focus:border-accentBlue">
+                    <input type="text" id="tgToken" placeholder="örn: 8623857901:AAH2..." class="w-full bg-darkBg border border-darkBorder rounded px-2.5 py-1.5 text-white focus:outline-none focus:border-accentBlue">
                 </div>
                 <div>
                     <label class="block text-slate-400 mb-1">Telegram Chat ID:</label>
-                    <input type="text" id="tgChatId" placeholder="örn: 987654321" class="w-full bg-darkBg border border-darkBorder rounded px-3 py-2 text-white focus:outline-none focus:border-accentBlue">
+                    <input type="text" id="tgChatId" placeholder="örn: 987654321" class="w-full bg-darkBg border border-darkBorder rounded px-2.5 py-1.5 text-white focus:outline-none focus:border-accentBlue">
                 </div>
-                <div>
+                <div class="md:col-span-2">
                     <label class="block text-slate-400 mb-1">Discord Webhook URL (Opsiyonel):</label>
-                    <input type="text" id="discordWebhook" placeholder="https://discord.com/api/webhooks/..." class="w-full bg-darkBg border border-darkBorder rounded px-3 py-2 text-white focus:outline-none focus:border-accentBlue">
-                </div>
-                <div>
-                    <label class="block text-slate-400 mb-1">Bot Alarm Limiti ($):</label>
-                    <input type="number" id="botThreshold" value="250000" class="w-full bg-darkBg border border-darkBorder rounded px-3 py-2 text-accentBlue font-bold focus:outline-none focus:border-accentBlue">
+                    <input type="text" id="discordWebhook" placeholder="https://discord.com/api/webhooks/..." class="w-full bg-darkBg border border-darkBorder rounded px-2.5 py-1.5 text-white focus:outline-none focus:border-accentBlue">
                 </div>
             </div>
 
+            <!-- Gelişmiş Filtreler -->
+            <div class="p-3 bg-darkBg/60 border border-darkBorder rounded-lg space-y-2.5 text-xs font-mono">
+                <div class="text-[11px] font-bold text-accentBlue uppercase">Gelişmiş Alarm Filtreleri</div>
+                
+                <div class="grid grid-cols-2 gap-2">
+                    <div>
+                        <label class="block text-slate-400 text-[10px] mb-1">Minimum Alarm Eşiği ($):</label>
+                        <input type="number" id="botThreshold" value="250000" class="w-full bg-darkCard border border-darkBorder rounded px-2 py-1 text-accentBlue font-bold focus:outline-none">
+                    </div>
+                    <div>
+                        <label class="block text-slate-400 text-[10px] mb-1">İşlem Yönü:</label>
+                        <select id="botSideFilter" class="w-full bg-darkCard border border-darkBorder rounded px-2 py-1 text-slate-200 focus:outline-none">
+                            <option value="ALL">🟢 Alışlar + 🔴 Satışlar</option>
+                            <option value="BUY_ONLY">Sadece Alışlar (🟢)</option>
+                            <option value="SELL_ONLY">Sadece Satışlar (🔴)</option>
+                        </select>
+                    </div>
+                </div>
+
+                <div class="grid grid-cols-2 gap-2 pt-1">
+                    <div>
+                        <label class="block text-slate-400 text-[10px] mb-1">Coin Kapsamı:</label>
+                        <select id="botScope" class="w-full bg-darkCard border border-darkBorder rounded px-2 py-1 text-slate-200 focus:outline-none">
+                            <option value="ALL">Tüm 15 Parite</option>
+                            <option value="ACTIVE_ONLY">Sadece Seçili Parite</option>
+                        </select>
+                    </div>
+                    <div class="flex items-center gap-2 pt-3">
+                        <input type="checkbox" id="botLiqAlerts" class="rounded bg-darkCard border-darkBorder text-accentBlue focus:ring-0">
+                        <label for="botLiqAlerts" class="text-[11px] text-slate-300 cursor-pointer">💥 Likidasyonları Bildir</label>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Alt Butonlar -->
             <div class="flex justify-between items-center pt-2 border-t border-darkBorder">
-                <button onclick="testBotMessage()" class="px-3 py-1.5 bg-darkBg hover:bg-darkBorder border border-darkBorder rounded text-xs text-slate-300 transition">🧪 Test Mesajı Gönder</button>
-                <button onclick="saveBotSettings()" class="px-4 py-1.5 bg-accentBlue text-white font-bold rounded text-xs transition shadow-lg shadow-blue-500/20">Kaydet</button>
+                <button onclick="sendInteractiveMenu()" class="px-3 py-1.5 bg-darkBg hover:bg-darkBorder border border-darkBorder rounded text-xs text-slate-300 transition">📱 Telefona Kumanda Gönder</button>
+                <button onclick="saveBotSettings()" class="px-4 py-1.5 bg-accentBlue hover:bg-blue-600 text-white font-bold rounded text-xs transition shadow-lg shadow-blue-500/20">Kaydet</button>
             </div>
         </div>
     </div>
@@ -324,13 +379,19 @@
         let audioEnabled = false;
         let voiceEnabled = false;
         let audioCtx = null;
+        let lastBotAlertTime = 0;
+        let lastTelegramUpdateId = 0; // Gelen komutları dinlemek için
 
-        // Bot Ayarları
+        // Gelişmiş Bot Yapılandırması
         let botConfig = {
+            enabled: localStorage.getItem('botEnabled') !== 'false',
             tgToken: localStorage.getItem('tgToken') || '8623857901:AAH2mMnEC4qMjG3fdpimhZyA4bFDgTqvugM',
             tgChatId: localStorage.getItem('tgChatId') || '',
             discordWebhook: localStorage.getItem('discordWebhook') || '',
-            botThreshold: parseFloat(localStorage.getItem('botThreshold')) || 250000
+            botThreshold: parseFloat(localStorage.getItem('botThreshold')) || 250000,
+            sideFilter: localStorage.getItem('botSideFilter') || 'ALL',
+            scope: localStorage.getItem('botScope') || 'ALL',
+            liqAlerts: localStorage.getItem('botLiqAlerts') !== 'false'
         };
 
         // Veri Deposu
@@ -343,37 +404,200 @@
         let currentCandle = null;
         let chartMarkers = [];
 
-        // TradingView Grafiğini Güvenli Başlat
+        // Bot Durum Rozetini Güncelle
+        function syncBotBadge() {
+            const led = document.getElementById('botLed');
+            const text = document.getElementById('botStatusText');
+            const btn = document.getElementById('botStatusBtn');
+
+            if (botConfig.enabled && botConfig.tgChatId) {
+                led.className = "w-2 h-2 rounded-full bg-emerald-400 animate-ping";
+                text.innerText = `Bot: Aktif ($${(botConfig.botThreshold/1000)}k+)`;
+                btn.className = "px-2.5 py-1 bg-emerald-500/10 hover:bg-emerald-500/20 border border-emerald-500/30 rounded text-xs text-emerald-400 font-semibold transition flex items-center gap-1.5";
+            } else {
+                led.className = "w-2 h-2 rounded-full bg-slate-500";
+                text.innerText = "Bot: Susturuldu";
+                btn.className = "px-2.5 py-1 bg-darkBg hover:bg-darkBorder border border-darkBorder rounded text-xs text-slate-400 transition flex items-center gap-1.5";
+            }
+        }
+
+        function onBotToggleChange(checked) {
+            botConfig.enabled = checked;
+            localStorage.setItem('botEnabled', checked);
+            syncBotBadge();
+        }
+
+        // ==========================================
+        // 📱 TELEGRAM TELEFONDAN UZAKTAN YÖNETİM MOTORU
+        // ==========================================
+        async function sendTelegramMessage(text, inlineKeyboard = null) {
+            if (!botConfig.tgToken || !botConfig.tgChatId) return;
+            try {
+                const url = `https://api.telegram.org/bot${botConfig.tgToken}/sendMessage`;
+                const payload = {
+                    chat_id: botConfig.tgChatId,
+                    text: text,
+                    parse_mode: 'HTML'
+                };
+                if (inlineKeyboard) {
+                    payload.reply_markup = { inline_keyboard: inlineKeyboard };
+                }
+
+                await fetch(url, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify(payload)
+                });
+            } catch(e) {}
+        }
+
+        // Telefondan Tıklanabilir İnteraktif Kumanda Gönder
+        async function sendInteractiveMenu() {
+            const kb = [
+                [
+                    { text: "🛑 Durdur (Sustur)", callback_data: "CMD_STOP" },
+                    { text: "▶️ Başlat (Aktif)", callback_data: "CMD_START" }
+                ],
+                [
+                    { text: "🎯 Eşik: $100k", callback_data: "CMD_SET_100K" },
+                    { text: "🎯 Eşik: $250k", callback_data: "CMD_SET_250K" },
+                    { text: "🎯 Eşik: $500k", callback_data: "CMD_SET_500K" }
+                ],
+                [
+                    { text: "📊 Radar Durum Raporu", callback_data: "CMD_STATUS" }
+                ]
+            ];
+
+            const msg = `🎮 <b>WHALERADAR TELEFON KUMANDASI</b>\n\nAşağıdaki butonlara basarak veya doğrudan mesaj yazarak terminali yönetebilirsiniz:\n• <code>/dur</code> : Botu susturur\n• <code>/baslat</code> : Tekrar açar\n• <code>/esik 100k</code> : Eşiği değiştirir\n• <code>/durum</code> : Anlık rapor verir`;
+            await sendTelegramMessage(msg, kb);
+            alert("📱 Telefonunuza interaktif kumanda butonları gönderildi!");
+        }
+
+        // Telegram Gelen Mesajları & Buton Tıklamalarını Dinleme (Polling)
+        async function pollTelegramUpdates() {
+            if (!botConfig.tgToken) {
+                setTimeout(pollTelegramUpdates, 4000);
+                return;
+            }
+
+            try {
+                const url = `https://api.telegram.org/bot${botConfig.tgToken}/getUpdates?offset=${lastTelegramUpdateId + 1}&timeout=5`;
+                const res = await fetch(url);
+                const data = await res.json();
+
+                if (data.ok && data.result && data.result.length > 0) {
+                    for (const item of data.result) {
+                        lastTelegramUpdateId = item.update_id;
+
+                        // 1. Buton Tıklaması (Callback Query)
+                        if (item.callback_query) {
+                            const cbData = item.callback_query.data;
+                            const fromId = item.callback_query.from.id.toString();
+
+                            if (fromId === botConfig.tgChatId.toString()) {
+                                handleRemoteCommand(cbData);
+                            }
+                        }
+
+                        // 2. Metin Komutları (/dur, /baslat, /esik vb.)
+                        if (item.message && item.message.text) {
+                            const text = item.message.text.trim();
+                            const fromId = item.message.from.id.toString();
+
+                            if (fromId === botConfig.tgChatId.toString()) {
+                                handleRemoteCommand(text);
+                            }
+                        }
+                    }
+                }
+            } catch(e) {}
+
+            setTimeout(pollTelegramUpdates, 3000);
+        }
+
+        // Telefondan Gelen Komutları İşle
+        function handleRemoteCommand(cmd) {
+            const c = cmd.toLowerCase().trim();
+
+            if (c === '/dur' || c === '/stop' || c === 'cmd_stop') {
+                botConfig.enabled = false;
+                localStorage.setItem('botEnabled', false);
+                syncBotBadge();
+                sendTelegramMessage("🛑 <b>WhaleRadar Susturuldu!</b>\nArtık bildirim gönderilmeyecek. Tekrar açmak için <code>/baslat</code> yazın veya menüyü kullanın.");
+            }
+            else if (c === '/baslat' || c === '/start' || c === 'cmd_start') {
+                botConfig.enabled = true;
+                localStorage.setItem('botEnabled', true);
+                syncBotBadge();
+                sendTelegramMessage(`▶️ <b>WhaleRadar Aktif Edildi!</b>\nAlarm Eşiği: <b>$${botConfig.botThreshold.toLocaleString()}</b>\nBüyük balina hareketleri anında buraya iletilecek.`);
+            }
+            else if (c === '/menu' || c === 'menu') {
+                sendInteractiveMenu();
+            }
+            else if (c === '/durum' || c === '/status' || c === 'cmd_status') {
+                const totalVol = document.getElementById('totalVolume').innerText;
+                const whaleCount = document.getElementById('whaleCount').innerText;
+                const cvd = document.getElementById('cvdValue').innerText;
+                const buyPct = document.getElementById('buyRatio').innerText;
+
+                const report = `📊 <b>WHALERADAR DURUM RAPORU</b>\n\n` +
+                               `• <b>Bot Durumu:</b> ${botConfig.enabled ? '🟢 AKTİF' : '🔴 SUSTURULDU'}\n` +
+                               `• <b>Alarm Limiti:</b> $${botConfig.botThreshold.toLocaleString()}\n` +
+                               `• <b>Aktif Parite:</b> ${activeSymbol}\n` +
+                               `• <b>Filtrelenen Balina:</b> ${whaleCount} adet\n` +
+                               `• <b>Toplam Balina Hacmi:</b> ${totalVol}\n` +
+                               `• <b>Alıcı Hakimiyeti:</b> ${buyPct}\n` +
+                               `• <b>Net CVD:</b> ${cvd}`;
+                sendTelegramMessage(report);
+            }
+            else if (c === 'cmd_set_100k' || c.startsWith('/esik 100') || c.startsWith('/limit 100')) {
+                botConfig.botThreshold = 100000;
+                localStorage.setItem('botThreshold', 100000);
+                document.getElementById('botThreshold').value = 100000;
+                syncBotBadge();
+                sendTelegramMessage("🎯 <b>Alarm eşiği güncellendi:</b> $100,000");
+            }
+            else if (c === 'cmd_set_250k' || c.startsWith('/esik 250') || c.startsWith('/limit 250')) {
+                botConfig.botThreshold = 250000;
+                localStorage.setItem('botThreshold', 250000);
+                document.getElementById('botThreshold').value = 250000;
+                syncBotBadge();
+                sendTelegramMessage("🎯 <b>Alarm eşiği güncellendi:</b> $250,000");
+            }
+            else if (c === 'cmd_set_500k' || c.startsWith('/esik 500') || c.startsWith('/limit 500')) {
+                botConfig.botThreshold = 500000;
+                localStorage.setItem('botThreshold', 500000);
+                document.getElementById('botThreshold').value = 500000;
+                syncBotBadge();
+                sendTelegramMessage("🎯 <b>Alarm eşiği güncellendi:</b> $500,000");
+            }
+            else if (c.startsWith('/esik ') || c.startsWith('/limit ')) {
+                const num = parseFloat(c.replace(/[^0-9]/g, ''));
+                if (!isNaN(num) && num >= 1000) {
+                    botConfig.botThreshold = num;
+                    localStorage.setItem('botThreshold', num);
+                    document.getElementById('botThreshold').value = num;
+                    syncBotBadge();
+                    sendTelegramMessage(`🎯 <b>Alarm eşiği güncellendi:</b> $${num.toLocaleString()}`);
+                }
+            }
+        }
+
+        // ==========================================
+        // DİĞER ARAYÜZ VE CHART MOTORLARI
+        // ==========================================
         function initTradingViewChart() {
             try {
-                if (typeof LightweightCharts === 'undefined') {
-                    console.warn("LightweightCharts kütüphanesi yüklenemedi.");
-                    return;
-                }
+                if (typeof LightweightCharts === 'undefined') return;
                 const container = document.getElementById('chartContainer');
                 container.innerHTML = '';
 
                 chartInstance = LightweightCharts.createChart(container, {
-                    layout: {
-                        background: { color: 'transparent' },
-                        textColor: '#64748b',
-                        fontSize: 10,
-                    },
-                    grid: {
-                        vertLines: { color: '#1a2233' },
-                        horzLines: { color: '#1a2233' },
-                    },
-                    crosshair: {
-                        mode: LightweightCharts.CrosshairMode.Normal,
-                    },
-                    timeScale: {
-                        borderColor: '#20293a',
-                        timeVisible: true,
-                        secondsVisible: false,
-                    },
-                    rightPriceScale: {
-                        borderColor: '#20293a',
-                    },
+                    layout: { background: { color: 'transparent' }, textColor: '#64748b', fontSize: 10 },
+                    grid: { vertLines: { color: '#1a2233' }, horzLines: { color: '#1a2233' } },
+                    crosshair: { mode: LightweightCharts.CrosshairMode.Normal },
+                    timeScale: { borderColor: '#20293a', timeVisible: true, secondsVisible: false },
+                    rightPriceScale: { borderColor: '#20293a' },
                 });
 
                 candleSeries = chartInstance.addCandlestickSeries({
@@ -394,12 +618,9 @@
                 }).observe(container);
 
                 loadHistoricalCandles(activeSymbol);
-            } catch(e) {
-                console.error("Grafik başlatma hatası:", e);
-            }
+            } catch(e) {}
         }
 
-        // Binance REST API'den Mumları Çek
         async function loadHistoricalCandles(symbol) {
             if (!candleSeries) return;
             try {
@@ -421,24 +642,15 @@
                 }
                 chartMarkers = [];
                 candleSeries.setMarkers([]);
-            } catch(e) {
-                console.warn("Geçmiş mumlar yüklenirken hafif gecikme/hata:", e);
-            }
+            } catch(e) {}
         }
 
-        // Canlı Mum Güncelleme
         function updateCandleTick(price, timeMs) {
             if (!candleSeries) return;
             try {
                 const candleTime = Math.floor(timeMs / 60000) * 60;
                 if (!currentCandle || currentCandle.time !== candleTime) {
-                    currentCandle = {
-                        time: candleTime,
-                        open: price,
-                        high: price,
-                        low: price,
-                        close: price,
-                    };
+                    currentCandle = { time: candleTime, open: price, high: price, low: price, close: price };
                 } else {
                     currentCandle.high = Math.max(currentCandle.high, price);
                     currentCandle.low = Math.min(currentCandle.low, price);
@@ -449,7 +661,6 @@
             } catch(e) {}
         }
 
-        // Balina Marker Ekleme
         function addWhaleMarker(whale) {
             if (!candleSeries || whale.symbol !== activeSymbol) return;
             try {
@@ -470,7 +681,6 @@
             } catch(e) {}
         }
 
-        // Robotik Sesli Anons Motoru
         function toggleVoice() {
             voiceEnabled = !voiceEnabled;
             const btn = document.getElementById('voiceToggle');
@@ -491,13 +701,11 @@
                 window.speechSynthesis.cancel();
                 const utter = new SpeechSynthesisUtterance(text);
                 utter.rate = 1.1;
-                utter.pitch = 1.0;
                 utter.lang = 'en-US';
                 window.speechSynthesis.speak(utter);
             } catch(e) {}
         }
 
-        // Tema Değiştirme
         function changeTheme(themeName) {
             document.documentElement.className = `dark ${themeName}`;
             localStorage.setItem('whaleTheme', themeName);
@@ -506,7 +714,6 @@
         document.getElementById('themeSelect').value = savedTheme;
         changeTheme(savedTheme);
 
-        // Sol Menü Render
         function renderSidebar() {
             const list = document.getElementById('coinList');
             list.innerHTML = '';
@@ -550,7 +757,6 @@
             recalculateAndRender();
         }
 
-        // Eşik Kontrolleri
         function adjustThreshold(step) {
             userThreshold = Math.max(1000, userThreshold + step);
             syncThresholdUI();
@@ -584,7 +790,6 @@
             });
         }
 
-        // Heatmap Render Motoru
         function renderHeatmap(trades) {
             const heatmapList = document.getElementById('heatmapList');
             if (!trades || trades.length === 0) {
@@ -595,18 +800,13 @@
             const priceBuckets = {};
             trades.forEach(t => {
                 const roundedPrice = t.price >= 100 ? Math.round(t.price) : t.price.toFixed(4);
-                if (!priceBuckets[roundedPrice]) {
-                    priceBuckets[roundedPrice] = { vol: 0, buyVol: 0, sellVol: 0 };
-                }
+                if (!priceBuckets[roundedPrice]) priceBuckets[roundedPrice] = { vol: 0, buyVol: 0, sellVol: 0 };
                 priceBuckets[roundedPrice].vol += t.total_usd;
                 if (t.type === 'BUY') priceBuckets[roundedPrice].buyVol += t.total_usd;
                 else priceBuckets[roundedPrice].sellVol += t.total_usd;
             });
 
-            const sortedBuckets = Object.entries(priceBuckets)
-                .sort((a, b) => b[1].vol - a[1].vol)
-                .slice(0, 6);
-
+            const sortedBuckets = Object.entries(priceBuckets).sort((a, b) => b[1].vol - a[1].vol).slice(0, 6);
             const maxVol = Math.max(...sortedBuckets.map(b => b[1].vol), 1);
             heatmapList.innerHTML = '';
 
@@ -629,7 +829,6 @@
             });
         }
 
-        // Ekranı & İbreleri Yeniden Hesapla
         function recalculateAndRender() {
             const allTrades = rawTradeStore[activeSymbol] || [];
             const filtered = allTrades.filter(t => t.total_usd >= userThreshold);
@@ -671,7 +870,6 @@
             renderHeatmap(filtered);
         }
 
-        // Ses Motoru (Bip)
         function toggleAudio() {
             audioEnabled = !audioEnabled;
             if (audioEnabled && !audioCtx) audioCtx = new (window.AudioContext || window.webkitAudioContext)();
@@ -695,38 +893,53 @@
             } catch(e) {}
         }
 
-        // Bot / Webhook Entegrasyonu
         function toggleBotModal() {
             const modal = document.getElementById('botModal');
             modal.classList.toggle('hidden');
+            
+            document.getElementById('botEnabledToggle').checked = botConfig.enabled;
             document.getElementById('tgToken').value = botConfig.tgToken;
             document.getElementById('tgChatId').value = botConfig.tgChatId;
             document.getElementById('discordWebhook').value = botConfig.discordWebhook;
             document.getElementById('botThreshold').value = botConfig.botThreshold;
+            document.getElementById('botSideFilter').value = botConfig.sideFilter;
+            document.getElementById('botScope').value = botConfig.scope;
+            document.getElementById('botLiqAlerts').checked = botConfig.liqAlerts;
         }
 
         function saveBotSettings() {
+            botConfig.enabled = document.getElementById('botEnabledToggle').checked;
             botConfig.tgToken = document.getElementById('tgToken').value.trim();
             botConfig.tgChatId = document.getElementById('tgChatId').value.trim();
             botConfig.discordWebhook = document.getElementById('discordWebhook').value.trim();
             botConfig.botThreshold = parseFloat(document.getElementById('botThreshold').value) || 250000;
+            botConfig.sideFilter = document.getElementById('botSideFilter').value;
+            botConfig.scope = document.getElementById('botScope').value;
+            botConfig.liqAlerts = document.getElementById('botLiqAlerts').checked;
 
+            localStorage.setItem('botEnabled', botConfig.enabled);
             localStorage.setItem('tgToken', botConfig.tgToken);
             localStorage.setItem('tgChatId', botConfig.tgChatId);
             localStorage.setItem('discordWebhook', botConfig.discordWebhook);
             localStorage.setItem('botThreshold', botConfig.botThreshold);
+            localStorage.setItem('botSideFilter', botConfig.sideFilter);
+            localStorage.setItem('botScope', botConfig.scope);
+            localStorage.setItem('botLiqAlerts', botConfig.liqAlerts);
 
+            syncBotBadge();
             alert("✅ Bot ayarları kaydedildi!");
             toggleBotModal();
         }
 
         async function triggerBotAlert(message) {
-            if (botConfig.tgToken && botConfig.tgChatId) {
-                try {
-                    const url = `https://api.telegram.org/bot${botConfig.tgToken}/sendMessage?chat_id=${encodeURIComponent(botConfig.tgChatId)}&text=${encodeURIComponent(message)}&parse_mode=HTML`;
-                    await fetch(url);
-                } catch(e) {}
-            }
+            if (!botConfig.enabled) return;
+
+            const now = Date.now();
+            if (now - lastBotAlertTime < 2000) return;
+            lastBotAlertTime = now;
+
+            sendTelegramMessage(message);
+
             if (botConfig.discordWebhook) {
                 try {
                     await fetch(botConfig.discordWebhook, {
@@ -738,13 +951,6 @@
             }
         }
 
-        async function testBotMessage() {
-            saveBotSettings();
-            await triggerBotAlert("🐋 <b>WHALERADAR PRO TEST ALARMI</b>\n\n✅ Sistem hazır!");
-            alert("Test bildirimi gönderildi!");
-        }
-
-        // Spot Tabloya Satır Basma
         function renderTableRow(whale, prepend = true) {
             const tbody = document.getElementById('whaleTableBody');
             const emptyRow = document.getElementById('emptyRow');
@@ -772,7 +978,6 @@
             }
         }
 
-        // Likidasyon Kartı
         function renderLiquidation(liq) {
             const container = document.getElementById('liqContainer');
             const emptyLiq = document.getElementById('emptyLiq');
@@ -800,9 +1005,13 @@
             if (liq.total_usd >= 50000) {
                 speakAnnouncement(`${liq.symbol.replace('USDT', '')} ${isShortLiq ? 'Short' : 'Long'} Liquidation`);
             }
+
+            if (botConfig.enabled && botConfig.liqAlerts && liq.total_usd >= 100000) {
+                const liqMsg = `💥 <b>DEV LİKİDASYON ALARMI!</b>\n\n<b>Parite:</b> ${liq.symbol}\n<b>Patlayan Pozisyon:</b> ${posType}\n<b>Tutar:</b> $${liq.total_usd.toLocaleString()}\n<b>Fiyat:</b> $${liq.price.toLocaleString()}`;
+                triggerBotAlert(liqMsg);
+            }
         }
 
-        // CSV İndirme Motoru
         function exportToCSV() {
             const allTrades = rawTradeStore[activeSymbol] || [];
             if (allTrades.length === 0) {
@@ -825,7 +1034,6 @@
             document.body.removeChild(link);
         }
 
-        // WebSocket Motoru (Spot + Futures)
         function initWebSocket() {
             const badge = document.getElementById('connBadge');
             const text = document.getElementById('connText');
@@ -879,19 +1087,24 @@
                         addWhaleMarker(whale);
                         playSound(whale.type === 'BUY' ? 880 : 440);
 
-                        // Sesli Robotik Anons ($100k+)
                         if (whale.total_usd >= 100000) {
                             const kVal = (whale.total_usd / 1000).toFixed(0);
                             speakAnnouncement(`${whale.symbol.replace('USDT', '')} ${kVal} thousand ${whale.type.toLowerCase()}`);
                         }
 
-                        // Telegram Bot Alarmı ($250k+)
-                        if (whale.total_usd >= botConfig.botThreshold) {
+                        recalculateAndRender();
+                    }
+
+                    if (botConfig.enabled && whale.total_usd >= botConfig.botThreshold) {
+                        const passScope = (botConfig.scope === 'ALL') || (whale.symbol === activeSymbol);
+                        const passSide = (botConfig.sideFilter === 'ALL') || 
+                                         (botConfig.sideFilter === 'BUY_ONLY' && whale.type === 'BUY') ||
+                                         (botConfig.sideFilter === 'SELL_ONLY' && whale.type === 'SELL');
+
+                        if (passScope && passSide) {
                             const botMsg = `🐋 <b>MEGA BALİNA ALARMI!</b>\n\n<b>Parite:</b> ${whale.symbol}\n<b>Tür:</b> ${whale.type === 'BUY' ? '🟢 ALIM' : '🔴 SATIM'}\n<b>Tutar:</b> $${whale.total_usd.toLocaleString()}\n<b>Fiyat:</b> $${whale.price.toLocaleString()}`;
                             triggerBotAlert(botMsg);
                         }
-
-                        recalculateAndRender();
                     }
                 };
 
@@ -931,15 +1144,15 @@
                     text.innerText = "Yeniden Bağlanıyor...";
                     setTimeout(initWebSocket, 3000);
                 };
-            } catch(e) {
-                console.error("WebSocket init hatası:", e);
-            }
+            } catch(e) {}
         }
 
-        // Başlat
+        // Başlatıcı
         renderSidebar();
+        syncBotBadge();
         initTradingViewChart();
         initWebSocket();
+        pollTelegramUpdates(); // Telegram gelen mesaj dinleyicisini başlat
     </script>
 </body>
 </html>
