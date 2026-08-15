@@ -5,12 +5,13 @@ import json
 import time
 import asyncio
 import threading
+import queue
 import requests
 import websockets
 from http.server import HTTPServer, BaseHTTPRequestHandler
 
 # ----------------------------------------------------
-# 1. AYARLAR & YAPILANDIRMA DOSYASI
+# 1. AYARLAR & YAPILANDIRMA
 # ----------------------------------------------------
 PORT = int(os.environ.get("PORT", 10000))
 TELEGRAM_BOT_TOKEN = os.getenv("TELEGRAM_BOT_TOKEN", "8623857901:AAH2mMnEC4qMjG3fdpimhZyA4bFDgTqvugM").strip()
@@ -53,331 +54,251 @@ def save_current_state():
         pass
 
 bot_state = load_saved_state()
-ws_subscribe_queue = []  # Yeni eklenen coinleri canlı hatta sokmak için
+tracked_coins_set = set(bot_state["tracked_coins"]) # Hızlı O(1) arama için Set
+ws_subscribe_queue = []
+telegram_outbox = queue.Queue() # Asenkron mesaj kuyruğu
 
 def log(msg):
     print(f"[{time.strftime('%H:%M:%S')}] {msg}", flush=True)
 
 # ----------------------------------------------------
-# 2. RENDER SAĞLIK KONTROLÜ (HTTP LIVE)
+# 2. RENDER HTTP LIVE SERVER (NON-BLOCKING)
 # ----------------------------------------------------
 class HealthCheckHandler(BaseHTTPRequestHandler):
     def do_GET(self):
         self.send_response(200)
         self.send_header("Content-type", "text/plain; charset=utf-8")
         self.end_headers()
-        self.wfile.write(b"WhaleRadar 7/24 Cloud Bot Aktif!")
+        self.wfile.write(b"WhaleRadar Cloud Engine OK")
 
     def log_message(self, format, *args):
         return
 
 def run_http_server():
     server = HTTPServer(("0.0.0.0", PORT), HealthCheckHandler)
-    log(f"Render HTTP Port {PORT} dinleniyor (Live)")
     server.serve_forever()
 
 # ----------------------------------------------------
-# 3. TELEGRAM MESAJ GÖNDERİCİ
+# 3. YÜKSEK HIZLI TELEGRAM KUYRUK MOTORU (ASYNC WORKER)
 # ----------------------------------------------------
-def send_telegram_msg(text, target_chat_id=None, inline_keyboard=None):
-    cid = target_chat_id or TELEGRAM_CHAT_ID
-    if not TELEGRAM_BOT_TOKEN or not cid:
-        return
-    url = f"https://api.telegram.org/bot{TELEGRAM_BOT_TOKEN}/sendMessage"
-    payload = {"chat_id": cid, "text": text, "parse_mode": "HTML"}
-    if inline_keyboard:
-        payload["reply_markup"] = {"inline_keyboard": inline_keyboard}
-    try:
-        requests.post(url, json=payload, timeout=8)
-    except Exception as e:
-        log(f"TG Gönderme Hatası: {e}")
+def telegram_worker():
+    """Telegram mesajlarını ana akışı kilitlemeden sırayla arka planda gönderir."""
+    session = requests.Session()
+    while True:
+        try:
+            item = telegram_outbox.get()
+            if item is None:
+                break
+            text, target_cid, kb = item
+            cid = target_cid or TELEGRAM_CHAT_ID
+            if TELEGRAM_BOT_TOKEN and cid:
+                url = f"https://api.telegram.org/bot{TELEGRAM_BOT_TOKEN}/sendMessage"
+                payload = {"chat_id": cid, "text": text, "parse_mode": "HTML"}
+                if kb:
+                    payload["reply_markup"] = {"inline_keyboard": kb}
+                session.post(url, json=payload, timeout=6)
+            telegram_outbox.task_done()
+        except Exception:
+            pass
+        time.sleep(0.05)
 
-# AKILLI EŞİK AYRIŞTIRICI REGEX MOTORU
+def send_telegram_msg(text, target_chat_id=None, inline_keyboard=None):
+    # Ana döngüyü bekletmeden kuyruğa atar (Milisaniyelik işlem)
+    telegram_outbox.put((text, target_chat_id, inline_keyboard))
+
+# ----------------------------------------------------
+# 4. KOMUT AYRIŞTIRICI & BUTONLAR
+# ----------------------------------------------------
 def parse_smart_threshold(text):
     clean_text = text.lower().replace(",", "").replace("$", "").strip()
     match = re.search(r'([0-9]+(?:\.[0-9]+)?)\s*([km])?', clean_text)
     if not match:
         return None
     try:
-        num_part = float(match.group(1))
-        unit_part = match.group(2)
-        if unit_part == 'k':
-            return num_part * 1000
-        elif unit_part == 'm':
-            return num_part * 1000000
-        else:
-            return num_part
+        num = float(match.group(1))
+        unit = match.group(2)
+        return num * 1000000 if unit == 'm' else (num * 1000 if unit == 'k' else num)
     except Exception:
         return None
 
 def normalize_coin_symbol(sym):
     s = sym.strip().upper()
-    if not s.endswith("USDT"):
-        s += "USDT"
-    return s
+    return s if s.endswith("USDT") else s + "USDT"
 
 def format_coin_list(coins):
     return ", ".join([c.replace("USDT", "") for c in coins])
 
 def get_control_keyboard():
     return [
-        [
-            {"text": "🛑 Durdur", "callback_data": "cmd_stop"},
-            {"text": "▶️ Başlat", "callback_data": "cmd_start"}
-        ],
-        [
-            {"text": "🎯 $10k", "callback_data": "cmd_set_10k"},
-            {"text": "🎯 $50k", "callback_data": "cmd_set_50k"},
-            {"text": "🎯 $100k", "callback_data": "cmd_set_100k"}
-        ],
-        [
-            {"text": "🎯 $250k", "callback_data": "cmd_set_250k"},
-            {"text": "🎯 $500k", "callback_data": "cmd_set_500k"},
-            {"text": "🎯 $1M", "callback_data": "cmd_set_1m"}
-        ],
-        [
-            {"text": "🪙 Coin Kumandası", "callback_data": "cmd_coin_menu"},
-            {"text": "📊 Durum", "callback_data": "cmd_status"}
-        ],
-        [
-            {"text": "🔄 Fabrika Ayarları ($100k)", "callback_data": "cmd_reset"}
-        ]
+        [{"text": "🛑 Durdur", "callback_data": "cmd_stop"}, {"text": "▶️ Başlat", "callback_data": "cmd_start"}],
+        [{"text": "🎯 $10k", "callback_data": "cmd_set_10k"}, {"text": "🎯 $50k", "callback_data": "cmd_set_50k"}, {"text": "🎯 $100k", "callback_data": "cmd_set_100k"}],
+        [{"text": "🎯 $250k", "callback_data": "cmd_set_250k"}, {"text": "🎯 $500k", "callback_data": "cmd_set_500k"}, {"text": "🎯 $1M", "callback_data": "cmd_set_1m"}],
+        [{"text": "🪙 Coin Kumandası", "callback_data": "cmd_coin_menu"}, {"text": "📊 Durum", "callback_data": "cmd_status"}],
+        [{"text": "🔄 Fabrika Ayarları ($100k)", "callback_data": "cmd_reset"}]
     ]
 
 def get_coin_keyboard():
     return [
-        [
-            {"text": "🟡 BTC", "callback_data": "cmd_only_btc"},
-            {"text": "🔷 ETH", "callback_data": "cmd_only_eth"},
-            {"text": "🟣 SOL", "callback_data": "cmd_only_sol"}
-        ],
-        [
-            {"text": "🔥 Top 3 (BTC+ETH+SOL)", "callback_data": "cmd_top3"},
-            {"text": "🌐 Tüm Liste", "callback_data": "cmd_all_coins"}
-        ],
-        [
-            {"text": "🔙 Ana Menüye Dön", "callback_data": "cmd_main_menu"}
-        ]
+        [{"text": "🟡 BTC", "callback_data": "cmd_only_btc"}, {"text": "🔷 ETH", "callback_data": "cmd_only_eth"}, {"text": "🟣 SOL", "callback_data": "cmd_only_sol"}],
+        [{"text": "🔥 Top 3 (BTC+ETH+SOL)", "callback_data": "cmd_top3"}, {"text": "🌐 Tüm Liste", "callback_data": "cmd_all_coins"}],
+        [{"text": "🔙 Ana Menü", "callback_data": "cmd_main_menu"}]
     ]
 
-# ----------------------------------------------------
-# 4. TELEGRAM KOMUT MOTORU
-# ----------------------------------------------------
 def handle_telegram_command(cmd_text, sender_id):
-    global bot_state, TELEGRAM_CHAT_ID, ws_subscribe_queue
+    global bot_state, TELEGRAM_CHAT_ID, tracked_coins_set, ws_subscribe_queue
     TELEGRAM_CHAT_ID = str(sender_id)
     raw = cmd_text.strip()
     c = raw.lower()
-    if c.startswith("/"):
-        c = c[1:].strip()
+    if c.startswith("/"): c = c[1:].strip()
 
-    log(f"İşlenen Komut: '{raw}' | Gönderen: {sender_id}")
-
-    # 1. Durdur
     if c in ["dur", "stop", "durdur", "kapat", "cmd_stop"]:
         bot_state["enabled"] = False
         save_current_state()
         send_telegram_msg("🛑 <b>WhaleRadar Susturuldu!</b>\nTekrar açmak için <code>baslat</code> yazın.", sender_id)
 
-    # 2. Başlat
     elif c in ["baslat", "start", "ac", "calistir", "cmd_start"]:
         bot_state["enabled"] = True
         save_current_state()
-        coins_str = format_coin_list(bot_state["tracked_coins"])
-        send_telegram_msg(f"▶️ <b>WhaleRadar 7/24 Bulut Aktif!</b>\n\n• <b>Aktif Eşik:</b> <code>${bot_state['threshold']:,.0f}</code>\n• <b>İzlenenler:</b> {coins_str}", sender_id)
+        send_telegram_msg(f"▶️ <b>WhaleRadar Aktif!</b>\n\n• <b>Eşik:</b> ${bot_state['threshold']:,.0f}\n• <b>İzlenen:</b> {format_coin_list(bot_state['tracked_coins'])}", sender_id)
 
-    # 3. Fabrika Ayarlarına Sıfırla
     elif c in ["sifirla", "reset", "cmd_reset"]:
         bot_state["enabled"] = True
         bot_state["threshold"] = 100000.0
         bot_state["tracked_coins"] = list(DEFAULT_COINS)
+        tracked_coins_set = set(DEFAULT_COINS)
         save_current_state()
-        send_telegram_msg("🔄 <b>WhaleRadar Fabrika Ayarlarına Sıfırlandı!</b>\n\n• Durum: 🟢 Aktif\n• Alarm Limiti: <b>$100,000</b>\n• İzlenen: <b>15 Büyük Kripto</b>", sender_id)
+        send_telegram_msg("🔄 <b>Ayarlar Sıfırlandı!</b>\n• Eşik: $100,000\n• Coinler: 15 Büyük Kripto", sender_id)
 
-    # 4. Ana Menü
     elif c in ["menu", "kumanda", "yardim", "help", "cmd_main_menu"]:
-        coins_str = format_coin_list(bot_state["tracked_coins"])
-        msg = (
-            f"🎮 <b>WHALERADAR KONTROL MERKEZİ</b>\n\n"
-            f"• <b>Mevcut Eşik:</b> <code>${bot_state['threshold']:,.0f}</code>\n"
-            f"• <b>Durum:</b> {'🟢 Aktif' if bot_state['enabled'] else '🔴 Susturuldu'}\n"
-            f"• <b>İzlenen Coinler:</b> <code>{coins_str}</code>\n\n"
-            f"Butonlarla yönetebilir veya serbestçe <code>esik 75k</code>, <code>btc sol</code>, <code>ekle avax</code> yazabilirsiniz:"
+        send_telegram_msg(
+            f"🎮 <b>WHALERADAR KONTROL PANELİ</b>\n\n• <b>Eşik:</b> <code>${bot_state['threshold']:,.0f}</code>\n• <b>Durum:</b> {'🟢 Aktif' if bot_state['enabled'] else '🔴 Kapalı'}\n• <b>Coinler:</b> <code>{format_coin_list(bot_state['tracked_coins'])}</code>",
+            sender_id,
+            inline_keyboard=get_control_keyboard()
         )
-        send_telegram_msg(msg, sender_id, inline_keyboard=get_control_keyboard())
 
-    # 5. Coin Menüsü
     elif c in ["coin", "coinler", "parite", "cmd_coin_menu"]:
-        coins_str = format_coin_list(bot_state["tracked_coins"])
-        msg = (
-            f"🪙 <b>KRİPTO PARİTE YÖNETİMİ</b>\n\n"
-            f"• <b>Şu An İzlenen ({len(bot_state['tracked_coins'])} adet):</b>\n<code>{coins_str}</code>\n\n"
-            f"<b>Nasıl Ayarlayabilirsin?</b>\n"
-            f"• Tek coine kilitlen: <code>btc</code>, <code>sol</code>, <code>avax</code>\n"
-            f"• Çoklu coin seç: <code>btc eth sol</code>\n"
-            f"• Yeni ekle: <code>ekle link doge sui</code>\n"
-            f"• Listeden çıkar: <code>cikar pepe shib</code>\n"
-            f"• Tümünü aç: <code>tumu</code>"
+        send_telegram_msg(
+            f"🪙 <b>COIN YÖNETİMİ</b>\n\n• <b>Aktif:</b> <code>{format_coin_list(bot_state['tracked_coins'])}</code>\n\n• Tek coin: <code>btc</code>, <code>sol</code>\n• Çoklu: <code>btc eth sol</code>\n• Ekle: <code>ekle avax link</code>\n• Çıkar: <code>cikar pepe</code>",
+            sender_id,
+            inline_keyboard=get_coin_keyboard()
         )
-        send_telegram_msg(msg, sender_id, inline_keyboard=get_coin_keyboard())
 
-    # 6. Hazır Coin Butonları
     elif c == "cmd_only_btc":
         bot_state["tracked_coins"] = ["BTCUSDT"]
+        tracked_coins_set = {"BTCUSDT"}
         save_current_state()
-        send_telegram_msg("🎯 <b>Odak Modu:</b> Sadece <b>BTCUSDT</b> balinaları izleniyor!", sender_id)
+        send_telegram_msg("🎯 Sadece <b>BTCUSDT</b> izleniyor!", sender_id)
 
     elif c == "cmd_only_eth":
         bot_state["tracked_coins"] = ["ETHUSDT"]
+        tracked_coins_set = {"ETHUSDT"}
         save_current_state()
-        send_telegram_msg("🎯 <b>Odak Modu:</b> Sadece <b>ETHUSDT</b> balinaları izleniyor!", sender_id)
+        send_telegram_msg("🎯 Sadece <b>ETHUSDT</b> izleniyor!", sender_id)
 
     elif c == "cmd_only_sol":
         bot_state["tracked_coins"] = ["SOLUSDT"]
+        tracked_coins_set = {"SOLUSDT"}
         save_current_state()
-        send_telegram_msg("🎯 <b>Odak Modu:</b> Sadece <b>SOLUSDT</b> balinaları izleniyor!", sender_id)
+        send_telegram_msg("🎯 Sadece <b>SOLUSDT</b> izleniyor!", sender_id)
 
     elif c == "cmd_top3":
         bot_state["tracked_coins"] = ["BTCUSDT", "ETHUSDT", "SOLUSDT"]
+        tracked_coins_set = {"BTCUSDT", "ETHUSDT", "SOLUSDT"}
         save_current_state()
-        send_telegram_msg("🔥 <b>Top 3 Modu:</b> Sadece <b>BTC, ETH, SOL</b> izleniyor!", sender_id)
+        send_telegram_msg("🔥 <b>Top 3:</b> BTC, ETH, SOL izleniyor!", sender_id)
 
-    elif c in ["cmd_all_coins", "tumu", "hepsi", "all", "tum coinler"]:
+    elif c in ["cmd_all_coins", "tumu", "hepsi", "all"]:
         bot_state["tracked_coins"] = list(DEFAULT_COINS)
+        tracked_coins_set = set(DEFAULT_COINS)
         save_current_state()
-        send_telegram_msg(f"🌐 <b>Tüm Piyasa Modu:</b> {len(DEFAULT_COINS)} kripto paranın tümü izleniyor!", sender_id)
+        send_telegram_msg("🌐 15 kripto paranın tümü izleniyor!", sender_id)
 
-    # 7. Durum Raporu
     elif c in ["durum", "status", "rapor", "cmd_status"]:
-        coins_str = format_coin_list(bot_state["tracked_coins"])
-        status_text = (
-            f"☁️ <b>7/24 BULUT DURUM RAPORU</b>\n\n"
-            f"• <b>Durum:</b> {'🟢 AKTİF' if bot_state['enabled'] else '🔴 SUSTURULDU'}\n"
-            f"• <b>Aktif Alarm Eşiği:</b> <b>${bot_state['threshold']:,.0f}</b>\n"
-            f"• <b>İzlenen Pariteler ({len(bot_state['tracked_coins'])} adet):</b>\n<code>{coins_str}</code>\n"
-            f"• <b>Sunucu:</b> Render Cloud Engine"
+        send_telegram_msg(
+            f"☁️ <b>BULUT DURUM RAPORU</b>\n\n• <b>Durum:</b> {'🟢 AKTİF' if bot_state['enabled'] else '🔴 KAPALI'}\n• <b>Eşik:</b> <b>${bot_state['threshold']:,.0f}</b>\n• <b>İzlenen ({len(bot_state['tracked_coins'])} adet):</b>\n<code>{format_coin_list(bot_state['tracked_coins'])}</code>",
+            sender_id
         )
-        send_telegram_msg(status_text, sender_id)
 
-    # 8. Buton Eşikleri
-    elif c == "cmd_set_10k":
-        bot_state["threshold"] = 10000.0
-        save_current_state()
-        send_telegram_msg("🎯 <b>Alarm eşiği:</b> $10,000", sender_id)
+    elif c.startswith("cmd_set_"):
+        val_map = {"10k": 10000, "50k": 50000, "100k": 100000, "250k": 250000, "500k": 500000, "1m": 1000000}
+        key = c.replace("cmd_set_", "")
+        if key in val_map:
+            bot_state["threshold"] = float(val_map[key])
+            save_current_state()
+            send_telegram_msg(f"🎯 <b>Alarm eşiği:</b> ${val_map[key]:,.0f}", sender_id)
 
-    elif c == "cmd_set_50k":
-        bot_state["threshold"] = 50000.0
-        save_current_state()
-        send_telegram_msg("🎯 <b>Alarm eşiği:</b> $50,000", sender_id)
-
-    elif c == "cmd_set_100k":
-        bot_state["threshold"] = 100000.0
-        save_current_state()
-        send_telegram_msg("🎯 <b>Alarm eşiği:</b> $100,000", sender_id)
-
-    elif c == "cmd_set_250k":
-        bot_state["threshold"] = 250000.0
-        save_current_state()
-        send_telegram_msg("🎯 <b>Alarm eşiği:</b> $250,000", sender_id)
-
-    elif c == "cmd_set_500k":
-        bot_state["threshold"] = 500000.0
-        save_current_state()
-        send_telegram_msg("🎯 <b>Alarm eşiği:</b> $500,000", sender_id)
-
-    elif c == "cmd_set_1m":
-        bot_state["threshold"] = 1000000.0
-        save_current_state()
-        send_telegram_msg("🎯 <b>Alarm eşiği:</b> $1,000,000 (Mega Balina)", sender_id)
-
-    # 9. Dinamik Coin Ekleme ("ekle avax link doge")
     elif c.startswith("ekle ") or c.startswith("add "):
         tokens = re.sub(r'^(ekle|add)\s+', '', c).replace(",", " ").split()
-        added = []
         for t in tokens:
             sym = normalize_coin_symbol(t)
-            if sym not in bot_state["tracked_coins"]:
+            if sym not in tracked_coins_set:
                 bot_state["tracked_coins"].append(sym)
+                tracked_coins_set.add(sym)
                 ws_subscribe_queue.append(sym)
-                added.append(sym.replace("USDT", ""))
-        if added:
-            save_current_state()
-            send_telegram_msg(f"✅ <b>Listeye Eklendi:</b> {', '.join(added)}\n\nGüncel Liste: <code>{format_coin_list(bot_state['tracked_coins'])}</code>", sender_id)
-        else:
-            send_telegram_msg("ℹ️ Belirttiğiniz coinler zaten listenizde mevcut.", sender_id)
+        save_current_state()
+        send_telegram_msg(f"✅ <b>Güncel Liste:</b> <code>{format_coin_list(bot_state['tracked_coins'])}</code>", sender_id)
 
-    # 10. Dinamik Coin Çıkarma ("cikar pepe shib")
-    elif c.startswith("cikar ") or c.startswith("sil ") or c.startswith("remove "):
-        tokens = re.sub(r'^(cikar|sil|remove)\s+', '', c).replace(",", " ").split()
-        removed = []
+    elif c.startswith("cikar ") or c.startswith("sil "):
+        tokens = re.sub(r'^(cikar|sil)\s+', '', c).replace(",", " ").split()
         for t in tokens:
             sym = normalize_coin_symbol(t)
-            if sym in bot_state["tracked_coins"]:
+            if sym in tracked_coins_set:
                 bot_state["tracked_coins"].remove(sym)
-                removed.append(sym.replace("USDT", ""))
-        if removed:
-            if not bot_state["tracked_coins"]:
-                bot_state["tracked_coins"] = ["BTCUSDT"]
-            save_current_state()
-            send_telegram_msg(f"🗑️ <b>Listeden Çıkarıldı:</b> {', '.join(removed)}\n\nKalan Liste: <code>{format_coin_list(bot_state['tracked_coins'])}</code>", sender_id)
-        else:
-            send_telegram_msg("ℹ️ Belirttiğiniz coinler zaten listenizde yoktu.", sender_id)
+                tracked_coins_set.remove(sym)
+        if not bot_state["tracked_coins"]:
+            bot_state["tracked_coins"] = ["BTCUSDT"]
+            tracked_coins_set = {"BTCUSDT"}
+        save_current_state()
+        send_telegram_msg(f"🗑️ <b>Kalan Liste:</b> <code>{format_coin_list(bot_state['tracked_coins'])}</code>", sender_id)
 
-    # 11. Sadece Belirli Coinleri Seçme (Örn: "sadece btc sol", "btc sol eth", "avax")
-    elif any(k in c for k in ["sadece ", "only "]) or all(re.match(r'^[a-zA-Z]{2,10}(usdt)?$', tok) for tok in c.split() if tok):
+    elif any(k in c for k in ["sadece ", "only "]) or (c.replace(" ", "").isalpha() and not c.startswith("esik")):
         tokens = re.sub(r'^(sadece|only)\s+', '', c).replace(",", " ").split()
         new_list = [normalize_coin_symbol(t) for t in tokens if t]
         if new_list:
-            bot_state["tracked_coins"] = list(dict.fromkeys(new_list))  # Tekrarları sil
+            bot_state["tracked_coins"] = list(dict.fromkeys(new_list))
+            tracked_coins_set = set(bot_state["tracked_coins"])
             for sym in new_list:
                 ws_subscribe_queue.append(sym)
             save_current_state()
-            send_telegram_msg(f"🎯 <b>Takip Listesi Güncellendi:</b>\n👉 <code>{format_coin_list(bot_state['tracked_coins'])}</code>\n\nArtık sadece bu coinlerin balinaları iletilecek.", sender_id)
+            send_telegram_msg(f"🎯 <b>Yeni Liste:</b> <code>{format_coin_list(bot_state['tracked_coins'])}</code>", sender_id)
             return
 
-    # 12. Eşik Girişi (Regex Yakalama: "esik 75k", "35000", "1.5m")
     else:
         parsed_val = parse_smart_threshold(c)
-        if parsed_val is not None and parsed_val >= 1000:
+        if parsed_val and parsed_val >= 1000:
             bot_state["threshold"] = float(parsed_val)
             save_current_state()
-            send_telegram_msg(f"🎯 <b>Alarm eşiği başarıyla güncellendi:</b>\n👉 <b>${parsed_val:,.0f}</b>\n\nBu tutarın altındaki işlemler filtrelenecek.", sender_id)
+            send_telegram_msg(f"🎯 <b>Alarm eşiği güncellendi:</b> ${parsed_val:,.0f}", sender_id)
         else:
-            send_telegram_msg("❓ Komut anlaşılamadı.\n\n• Coin seçmek için: <code>btc sol</code> veya <code>ekle avax</code>\n• Eşik için: <code>esik 75k</code> veya <code>35000</code>\n• Menü için: <code>menu</code>", sender_id)
+            send_telegram_msg("❓ Komut anlaşılamadı. Örnekler: <code>esik 75k</code>, <code>btc sol</code>, <code>menu</code>", sender_id)
 
 # ----------------------------------------------------
-# 5. TELEGRAM POLLER THREAD
+# 5. TELEGRAM POLLER (HAFİF VE DÜŞÜK CPU KULLANIMI)
 # ----------------------------------------------------
 def telegram_poller_loop():
-    log("Telegram dinleyici başlatılıyor...")
+    session = requests.Session()
     try:
-        requests.get(f"https://api.telegram.org/bot{TELEGRAM_BOT_TOKEN}/deleteWebhook?drop_pending_updates=False", timeout=10)
+        session.get(f"https://api.telegram.org/bot{TELEGRAM_BOT_TOKEN}/deleteWebhook?drop_pending_updates=False", timeout=6)
     except Exception:
         pass
 
     while True:
         try:
-            url = f"https://api.telegram.org/bot{TELEGRAM_BOT_TOKEN}/getUpdates?offset={bot_state['last_update_id'] + 1}&timeout=10"
-            res = requests.get(url, timeout=15).json()
+            url = f"https://api.telegram.org/bot{TELEGRAM_BOT_TOKEN}/getUpdates?offset={bot_state['last_update_id'] + 1}&timeout=8"
+            res = session.get(url, timeout=12).json()
             if res.get("ok") and res.get("result"):
                 for update in res["result"]:
                     bot_state["last_update_id"] = update["update_id"]
-
                     if "callback_query" in update:
-                        cb = update["callback_query"]
-                        sender_id = str(cb["from"]["id"])
-                        handle_telegram_command(cb["data"], sender_id)
-
+                        handle_telegram_command(update["callback_query"]["data"], str(update["callback_query"]["from"]["id"]))
                     elif "message" in update and "text" in update["message"]:
-                        msg = update["message"]
-                        sender_id = str(msg["from"]["id"])
-                        handle_telegram_command(msg["text"], sender_id)
+                        handle_telegram_command(update["message"]["text"], str(update["message"]["from"]["id"]))
         except Exception:
-            time.sleep(2)
-        time.sleep(0.5)
+            time.sleep(1)
+        time.sleep(0.2)
 
 # ----------------------------------------------------
-# 6. BYBIT CANLI BALİNA AKIŞI
+# 6. BYBIT ULTRA OPTİMİZE WEBSOCKET MOTORU
 # ----------------------------------------------------
 async def crypto_websocket_task():
     global ws_subscribe_queue
@@ -385,23 +306,15 @@ async def crypto_websocket_task():
 
     while True:
         try:
-            async with websockets.connect(ws_url, ping_interval=20, ping_timeout=20) as ws:
-                log("Bybit Küresel Canlı Akışına Başarıyla Bağlanıldı!")
-                
-                # Başlangıçta izlenen tüm coinlere abone ol
+            async with websockets.connect(ws_url, ping_interval=20, ping_timeout=20, max_size=10_000_000) as ws:
                 initial_subs = list(set(DEFAULT_COINS + bot_state["tracked_coins"]))
-                sub_params = [f"publicTrade.{coin}" for coin in initial_subs]
-                sub_msg = {"op": "subscribe", "args": sub_params}
-                await ws.send(json.dumps(sub_msg))
+                await ws.send(json.dumps({"op": "subscribe", "args": [f"publicTrade.{c}" for c in initial_subs]}))
 
                 while True:
-                    # Yeni dinamik eklenen coinler varsa hatta abone et
                     if ws_subscribe_queue:
                         new_coins = list(ws_subscribe_queue)
                         ws_subscribe_queue.clear()
-                        dyn_params = [f"publicTrade.{coin}" for coin in new_coins]
-                        await ws.send(json.dumps({"op": "subscribe", "args": dyn_params}))
-                        log(f"Canlı akışa yeni abonelik eklendi: {dyn_params}")
+                        await ws.send(json.dumps({"op": "subscribe", "args": [f"publicTrade.{c}" for c in new_coins]}))
 
                     try:
                         msg = await asyncio.wait_for(ws.recv(), timeout=25)
@@ -410,48 +323,46 @@ async def crypto_websocket_task():
                         continue
 
                     data = json.loads(msg)
-                    if "data" not in data or not isinstance(data["data"], list):
+                    trades = data.get("data")
+                    if not trades or not isinstance(trades, list):
                         continue
 
-                    for trade in data["data"]:
-                        symbol = trade.get("s", "").upper()
-                        if symbol not in bot_state["tracked_coins"]:
+                    # Yüksek hızlı işlem akışı
+                    for trade in trades:
+                        sym = trade.get("s", "").upper()
+                        if sym not in tracked_coins_set:
                             continue
 
                         price = float(trade.get("p", 0))
                         qty = float(trade.get("v", 0))
                         total_usd = price * qty
-                        side = trade.get("S", "").upper()
-                        trade_type = "BUY" if side == "BUY" else "SELL"
 
-                        # KESİN EŞİK VE BİLDİRİM FİLTRESİ
                         if bot_state["enabled"] and total_usd >= bot_state["threshold"]:
                             now = time.time()
-                            if now - bot_state["last_alert_time"] >= 2:
+                            # 1 saniyelik anti-spam filtresi
+                            if now - bot_state["last_alert_time"] >= 1.0:
                                 bot_state["last_alert_time"] = now
-                                icon = "🟢 ALIM" if trade_type == "BUY" else "🔴 SATIM"
+                                is_buy = trade.get("S", "").upper() == "BUY"
+                                icon = "🟢 ALIM" if is_buy else "🔴 SATIM"
                                 alert_msg = (
                                     f"🐋 <b>BALİNA ALARMI (>${bot_state['threshold']/1000:,.0f}k)</b>\n\n"
-                                    f"<b>Parite:</b> {symbol}\n"
+                                    f"<b>Parite:</b> {sym}\n"
                                     f"<b>Tür:</b> {icon}\n"
                                     f"<b>Tutar:</b> ${total_usd:,.0f}\n"
                                     f"<b>Fiyat:</b> ${price:,.2f}"
                                 )
                                 send_telegram_msg(alert_msg)
-        except Exception as e:
-            log(f"WS Akış Hatası: {e}. 3 sn sonra tekrar bağlanıyor...")
-            await asyncio.sleep(3)
+        except Exception:
+            await asyncio.sleep(2)
 
 # ----------------------------------------------------
-# ANA ÇALIŞTIRICI
+# ÇALIŞTIRICI
 # ----------------------------------------------------
 if __name__ == "__main__":
-    log(f"WhaleRadar Engine Başlatılıyor... Aktif Eşik: ${bot_state['threshold']:,.0f}")
+    log("WhaleRadar Optimize Engine Başlatılıyor...")
     
-    http_t = threading.Thread(target=run_http_server, daemon=True)
-    http_t.start()
-
-    tg_t = threading.Thread(target=telegram_poller_loop, daemon=True)
-    tg_t.start()
+    threading.Thread(target=run_http_server, daemon=True).start()
+    threading.Thread(target=telegram_worker, daemon=True).start()
+    threading.Thread(target=telegram_poller_loop, daemon=True).start()
 
     asyncio.run(crypto_websocket_task())
