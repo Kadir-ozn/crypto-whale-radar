@@ -350,37 +350,46 @@ def handle_cmd(text, sender_id, sender_name=""):
         return
 
     raw = str(text).strip()
-    c = raw.lower().replace("/", "").replace("$", "").replace("usd", "").replace("usdt", "").strip()
+    lower_text = raw.lower().strip()
 
-    # Rapor Saati Ayarlama (Örn: "saat 08:30" veya "08:00")
-    time_match = re.search(r'(?:saat\s*)?([01]?[0-9]|2[0-3])[:.]([0-5][0-9])', c)
-    if time_match:
-        hh = f"{int(time_match.group(1)):02d}"
-        mm = f"{int(time_match.group(2)):02d}"
-        new_time = f"{hh}:{mm}"
-        update_user_settings(sender_id_str, {"report_time": new_time, "daily_report": True})
-        send_msg(f"⏰ <b>Günlük Bülten Saatiniz Ayarlandı:</b> <code>{new_time} (TSİ)</code>\nHer gün bu saatte 24 saatlik balina özeti otomatik cebinize gelecek!", sender_id_str)
-        return
+    # 1. SAAT AYARLAMA (Örn: "saat 15:28", "saat: 09:00", "/saat 23:00")
+    if "saat" in lower_text or "time" in lower_text:
+        time_match = re.search(r'([01]?[0-9]|2[0-3])[:.]([0-5][0-9])', lower_text)
+        if time_match:
+            hh = f"{int(time_match.group(1)):02d}"
+            mm = f"{int(time_match.group(2)):02d}"
+            new_time = f"{hh}:{mm}"
+            update_user_settings(sender_id_str, {"report_time": new_time, "daily_report": True})
+            send_msg(
+                f"⏰ <b>Günlük Bülten Saatiniz Ayarlandı:</b> <code>{new_time} (TSİ)</code>\n"
+                f"Her gün bu saatte 24 saatlik balina özeti otomatik olarak cebinize iletilecektir!",
+                sender_id_str
+            )
+            return
+        else:
+            send_msg("⚠️ Lütfen geçerli bir saat formatı girin. Örn: <code>saat 09:00</code> veya <code>saat 15:30</code>", sender_id_str)
+            return
 
-    # Günlük Raporu Aç / Kapat
-    if c in ["rapor ac", "rapor aç", "bulten ac", "bülten aç"]:
+    # 2. RAPOR AÇ / KAPAT KOMUTLARI
+    if lower_text in ["rapor ac", "rapor aç", "bulten ac", "bülten aç"]:
         update_user_settings(sender_id_str, {"daily_report": True})
-        send_msg(f"✅ <b>Günlük bülten aktif edildi!</b>\nGönderim saati: <code>{user.get('report_time', '09:00')}</code>\nDeğiştirmek için: <code>saat 08:30</code>", sender_id_str)
+        send_msg(f"✅ <b>Günlük bülten aktif!</b>\nGönderim saati: <code>{user.get('report_time', '09:00')} (TSİ)</code>\nDeğiştirmek için: <code>saat 09:00</code>", sender_id_str)
         return
 
-    if c in ["rapor kapat", "rapor iptal", "bulten kapat", "bülten kapat"]:
+    if lower_text in ["rapor kapat", "rapor iptal", "bulten kapat", "bülten kapat"]:
         update_user_settings(sender_id_str, {"daily_report": False})
         send_msg("🛑 <b>Otomatik günlük bülten kapatıldı.</b>\nİstediğiniz an <code>rapor</code> yazarak anlık özet alabilirsiniz.", sender_id_str)
         return
 
-    # Anlık Rapor İsteme
-    if c in ["rapor", "report", "bulten", "bülten", "ozet", "özet", "digest"]:
+    # 3. ANLIK RAPOR İSTEME
+    if lower_text in ["rapor", "/rapor", "report", "bulten", "bülten", "ozet", "özet", "digest"]:
         send_msg("⏳ 24 saatlik balina verileri hesaplanıyor...", sender_id_str)
         report_text = generate_daily_report_text()
         send_msg(report_text, sender_id_str)
         return
 
-    if c in ["menu", "menü", "panel", "durum", "status", "start"]:
+    # 4. PANEL / MENÜ
+    if lower_text in ["menu", "menü", "/menu", "panel", "/panel", "durum", "status", "start", "/start"]:
         st = "🟢 AKTİF" if user["enabled"] else "🔴 KAPALI"
         rep_st = f"🟢 AÇIK ({user.get('report_time', '09:00')} TSİ)" if user.get("daily_report", True) else "🔴 KAPALI"
         send_msg(
@@ -391,25 +400,29 @@ def handle_cmd(text, sender_id, sender_name=""):
             f"• <b>Balina Eşiğiniz:</b> <code>${user['threshold']:,.0f}</code>\n"
             f"• <b>Kullanıcı ID:</b> <code>{sender_id_str}</code>\n\n"
             f"⚙️ <b>Hızlı Komutlar:</b>\n"
-            f"• <code>saat 08:30</code> → Bülten saatini ayarlar\n"
+            f"• <code>saat 09:00</code> → Bülten saatini ayarlar\n"
             f"• <code>rapor</code> → Anlık 24s özet bülteni getirir\n"
-            f"• <code>50k</code> → Balina eşiğinizi $50,000 yapar",
+            f"• <code>50k</code> → Balina eşiğinizi $50,000 yapar\n"
+            f"• <code>durdur</code> / <code>baslat</code> → Canlı alarmları yönetir",
             sender_id_str
         )
         return
 
-    if c in ["dur", "stop", "durdur", "kapat", "off"]:
+    # 5. DURDUR / BAŞLAT
+    if lower_text in ["dur", "stop", "durdur", "kapat", "off"]:
         update_user_settings(sender_id_str, {"enabled": False})
-        send_msg("🛑 <b>Canlı bildirimleriniz durduruldu!</b>\nTekrar açmak için: <code>baslat</code>", sender_id_str)
+        send_msg("🛑 <b>Canlı radar bildirimleriniz durduruldu!</b>\nTekrar açmak için: <code>baslat</code>", sender_id_str)
         return
 
-    if c in ["baslat", "start", "ac", "aç", "on"]:
+    if lower_text in ["baslat", "start", "ac", "aç", "on"]:
         update_user_settings(sender_id_str, {"enabled": True})
         send_msg(f"▶️ <b>Radarınız Aktif!</b>\nEşiğiniz: <b>${user['threshold']:,.0f}</b>", sender_id_str)
         return
 
-    clean_val = re.sub(r'^(?:esik|eşik|limit)\s*[:=]?\s*', '', c).strip()
-    match = re.search(r'([0-9]+(?:[\.,][0-9]+)?)\s*([km])?', clean_val)
+    # 6. EŞİK DEĞERİ AYARLAMA (Örn: "50k", "100k", "esik 25000", "50000")
+    c_clean = lower_text.replace("/", "").replace("$", "").replace("usd", "").replace("usdt", "").strip()
+    clean_val = re.sub(r'^(?:esik|eşik|limit)\s*[:=]?\s*', '', c_clean).strip()
+    match = re.match(r'^([0-9]+(?:[\.,][0-9]+)?)\s*([km])?$', clean_val)
     if match:
         num_str = match.group(1).replace(",", ".")
         raw_val = float(num_str)
@@ -425,8 +438,7 @@ def handle_cmd(text, sender_id, sender_name=""):
         send_msg(f"🎯 <b>Size Özel Eşik Güncellendi:</b> ${final_val:,.0f}", sender_id_str)
         return
 
-    send_msg("❓ <b>Komut anlaşılamadı.</b>\nÖrnekler: <code>saat 08:00</code>, <code>rapor</code>, <code>50k</code>, <code>durdur</code>, <code>baslat</code>", sender_id_str)
-
+    send_msg("❓ <b>Komut anlaşılamadı.</b>\nÖrnekler: <code>saat 09:00</code>, <code>rapor</code>, <code>50k</code>, <code>durdur</code>, <code>baslat</code>", sender_id_str)
 # ----------------------------------------------------
 # 6. REST API (KİMLİK DOĞRULAMA & BULUT PROFİL)
 # ----------------------------------------------------
