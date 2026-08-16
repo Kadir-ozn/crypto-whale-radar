@@ -101,6 +101,12 @@
                 🔊 <span>Bip: Kapalı</span>
             </button>
 
+            <div class="flex items-center space-x-3">
+  
+           
+</div>
+
+
             <!-- CSV Dışa Aktar Butonu -->
             <button onclick="exportToCSV()" class="px-2.5 py-1 bg-accentBlue/10 hover:bg-accentBlue/20 border border-accentBlue/30 rounded text-xs text-accentBlue font-semibold transition flex items-center gap-1">
                 📥 <span>CSV</span>
@@ -427,161 +433,16 @@
             syncBotBadge();
         }
 
-        // ==========================================
-        // 📱 TELEGRAM TELEFONDAN UZAKTAN YÖNETİM MOTORU
-        // ==========================================
-        async function sendTelegramMessage(text, inlineKeyboard = null) {
-            if (!botConfig.tgToken || !botConfig.tgChatId) return;
-            try {
-                const url = `https://api.telegram.org/bot${botConfig.tgToken}/sendMessage`;
-                const payload = {
-                    chat_id: botConfig.tgChatId,
-                    text: text,
-                    parse_mode: 'HTML'
-                };
-                if (inlineKeyboard) {
-                    payload.reply_markup = { inline_keyboard: inlineKeyboard };
-                }
-
-                await fetch(url, {
-                    method: 'POST',
-                    headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify(payload)
-                });
-            } catch(e) {}
-        }
-
-        // Telefondan Tıklanabilir İnteraktif Kumanda Gönder
+       
+       // Telefondan Tıklanabilir İnteraktif Kumanda Gönder
         async function sendInteractiveMenu() {
-            const kb = [
-                [
-                    { text: "🛑 Durdur (Sustur)", callback_data: "CMD_STOP" },
-                    { text: "▶️ Başlat (Aktif)", callback_data: "CMD_START" }
-                ],
-                [
-                    { text: "🎯 Eşik: $100k", callback_data: "CMD_SET_100K" },
-                    { text: "🎯 Eşik: $250k", callback_data: "CMD_SET_250K" },
-                    { text: "🎯 Eşik: $500k", callback_data: "CMD_SET_500K" }
-                ],
-                [
-                    { text: "📊 Radar Durum Raporu", callback_data: "CMD_STATUS" }
-                ]
-            ];
-
-            const msg = `🎮 <b>WHALEMETRIC TELEFON KUMANDASI</b>\n\nAşağıdaki butonlara basarak veya doğrudan mesaj yazarak terminali yönetebilirsiniz:\n• <code>/dur</code> : Botu susturur\n• <code>/baslat</code> : Tekrar açar\n• <code>/esik 100k</code> : Eşiği değiştirir\n• <code>/durum</code> : Anlık rapor verir`;
-            await sendTelegramMessage(msg, kb);
+            sendBotCommand("menu");
             alert("📱 Telefonunuza interaktif kumanda butonları gönderildi!");
         }
 
-        // Telegram Gelen Mesajları & Buton Tıklamalarını Dinleme (Polling)
-        async function pollTelegramUpdates() {
-            if (!botConfig.tgToken) {
-                setTimeout(pollTelegramUpdates, 4000);
-                return;
-            }
-
-            try {
-                const url = `https://api.telegram.org/bot${botConfig.tgToken}/getUpdates?offset=${lastTelegramUpdateId + 1}&timeout=5`;
-                const res = await fetch(url);
-                const data = await res.json();
-
-                if (data.ok && data.result && data.result.length > 0) {
-                    for (const item of data.result) {
-                        lastTelegramUpdateId = item.update_id;
-
-                        // 1. Buton Tıklaması (Callback Query)
-                        if (item.callback_query) {
-                            const cbData = item.callback_query.data;
-                            const fromId = item.callback_query.from.id.toString();
-
-                            if (fromId === botConfig.tgChatId.toString()) {
-                                handleRemoteCommand(cbData);
-                            }
-                        }
-
-                        // 2. Metin Komutları (/dur, /baslat, /esik vb.)
-                        if (item.message && item.message.text) {
-                            const text = item.message.text.trim();
-                            const fromId = item.message.from.id.toString();
-
-                            if (fromId === botConfig.tgChatId.toString()) {
-                                handleRemoteCommand(text);
-                            }
-                        }
-                    }
-                }
-            } catch(e) {}
-
-            setTimeout(pollTelegramUpdates, 3000);
-        }
-
-        // Telefondan Gelen Komutları İşle
-        function handleRemoteCommand(cmd) {
-            const c = cmd.toLowerCase().trim();
-
-            if (c === '/dur' || c === '/stop' || c === 'cmd_stop') {
-                botConfig.enabled = false;
-                localStorage.setItem('botEnabled', false);
-                syncBotBadge();
-                sendTelegramMessage("🛑 <b>WhaleMetric Susturuldu!</b>\nArtık bildirim gönderilmeyecek. Tekrar açmak için <code>/baslat</code> yazın veya menüyü kullanın.");
-            }
-            else if (c === '/baslat' || c === '/start' || c === 'cmd_start') {
-                botConfig.enabled = true;
-                localStorage.setItem('botEnabled', true);
-                syncBotBadge();
-                sendTelegramMessage(`▶️ <b>WhaleMetric Aktif Edildi!</b>\nAlarm Eşiği: <b>$${botConfig.botThreshold.toLocaleString()}</b>\nBüyük balina hareketleri anında buraya iletilecek.`);
-            }
-            else if (c === '/menu' || c === 'menu') {
-                sendInteractiveMenu();
-            }
-            else if (c === '/durum' || c === '/status' || c === 'cmd_status') {
-                const totalVol = document.getElementById('totalVolume').innerText;
-                const whaleCount = document.getElementById('whaleCount').innerText;
-                const cvd = document.getElementById('cvdValue').innerText;
-                const buyPct = document.getElementById('buyRatio').innerText;
-
-                const report = `📊 <b>WHALEMETRIC DURUM RAPORU</b>\n\n` +
-                               `• <b>Bot Durumu:</b> ${botConfig.enabled ? '🟢 AKTİF' : '🔴 SUSTURULDU'}\n` +
-                               `• <b>Alarm Limiti:</b> $${botConfig.botThreshold.toLocaleString()}\n` +
-                               `• <b>Aktif Parite:</b> ${activeSymbol}\n` +
-                               `• <b>Filtrelenen Balina:</b> ${whaleCount} adet\n` +
-                               `• <b>Toplam Balina Hacmi:</b> ${totalVol}\n` +
-                               `• <b>Alıcı Hakimiyeti:</b> ${buyPct}\n` +
-                               `• <b>Net CVD:</b> ${cvd}`;
-                sendTelegramMessage(report);
-            }
-            else if (c === 'cmd_set_100k' || c.startsWith('/esik 100') || c.startsWith('/limit 100')) {
-                botConfig.botThreshold = 100000;
-                localStorage.setItem('botThreshold', 100000);
-                document.getElementById('botThreshold').value = 100000;
-                syncBotBadge();
-                sendTelegramMessage("🎯 <b>Alarm eşiği güncellendi:</b> $100,000");
-            }
-            else if (c === 'cmd_set_250k' || c.startsWith('/esik 250') || c.startsWith('/limit 250')) {
-                botConfig.botThreshold = 250000;
-                localStorage.setItem('botThreshold', 250000);
-                document.getElementById('botThreshold').value = 250000;
-                syncBotBadge();
-                sendTelegramMessage("🎯 <b>Alarm eşiği güncellendi:</b> $250,000");
-            }
-            else if (c === 'cmd_set_500k' || c.startsWith('/esik 500') || c.startsWith('/limit 500')) {
-                botConfig.botThreshold = 500000;
-                localStorage.setItem('botThreshold', 500000);
-                document.getElementById('botThreshold').value = 500000;
-                syncBotBadge();
-                sendTelegramMessage("🎯 <b>Alarm eşiği güncellendi:</b> $500,000");
-            }
-            else if (c.startsWith('/esik ') || c.startsWith('/limit ')) {
-                const num = parseFloat(c.replace(/[^0-9]/g, ''));
-                if (!isNaN(num) && num >= 1000) {
-                    botConfig.botThreshold = num;
-                    localStorage.setItem('botThreshold', num);
-                    document.getElementById('botThreshold').value = num;
-                    syncBotBadge();
-                    sendTelegramMessage(`🎯 <b>Alarm eşiği güncellendi:</b> $${num.toLocaleString()}`);
-                }
-            }
-        }
+       
+        
+        
 
         // ==========================================
         // DİĞER ARAYÜZ VE CHART MOTORLARI
@@ -757,23 +618,39 @@
             recalculateAndRender();
         }
 
+        // BOTA VE TELEGRAM'A DEĞER GÖNDEREN FONKSİYON
+        async function sendThresholdToBackend(val) {
+            try {
+                await fetch('http://localhost:10000/api/command', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ command: String(val) })
+                });
+            } catch(e) {}
+        }
+
         function adjustThreshold(step) {
             userThreshold = Math.max(1000, userThreshold + step);
             syncThresholdUI();
             recalculateAndRender();
+            sendThresholdToBackend(userThreshold);
         }
 
         function setQuickThreshold(val) {
             userThreshold = val;
             syncThresholdUI();
             recalculateAndRender();
+            sendThresholdToBackend(userThreshold);
         }
 
         function onManualThresholdInput(rawVal) {
             const cleanNum = parseFloat(rawVal.replace(/[^0-9.]/g, ''));
-            if (!isNaN(cleanNum) && cleanNum >= 1000) userThreshold = cleanNum;
-            syncThresholdUI();
-            recalculateAndRender();
+            if (!isNaN(cleanNum) && cleanNum >= 1000) {
+                userThreshold = cleanNum;
+                syncThresholdUI();
+                recalculateAndRender();
+                sendThresholdToBackend(userThreshold);
+            }
         }
 
         function syncThresholdUI() {
@@ -937,8 +814,6 @@
             const now = Date.now();
             if (now - lastBotAlertTime < 2000) return;
             lastBotAlertTime = now;
-
-            sendTelegramMessage(message);
 
             if (botConfig.discordWebhook) {
                 try {
@@ -1152,7 +1027,105 @@
         syncBotBadge();
         initTradingViewChart();
         initWebSocket();
-        pollTelegramUpdates(); // Telegram gelen mesaj dinleyicisini başlat
+
+        // CANLI TELEGRAM & BOT SENKRONİZASYONU
+        async function syncWithBackendBot() {
+            try {
+                const res = await fetch('http://localhost:10000/');
+                if (!res.ok) return;
+                const data = await res.json();
+                
+                if (typeof data.threshold !== 'undefined') {
+                    const tVal = Number(data.threshold);
+                    
+                    // 1. Terminal filtre eşiğini güncelle
+                    if (userThreshold !== tVal) {
+                        userThreshold = tVal;
+                        syncThresholdUI();
+                        recalculateAndRender();
+                    }
+
+                    // 2. Üst bardaki "Bot: Aktif (100k)" yazısını anlık güncelle
+                    const led = document.getElementById('botLed');
+                    const text = document.getElementById('botStatusText');
+                    const btn = document.getElementById('botStatusBtn');
+                    
+                    if (text && led && btn) {
+                        const kText = tVal >= 1000 ? `${(tVal/1000)}k` : tVal;
+                        if (data.enabled) {
+                            led.className = "w-2 h-2 rounded-full bg-emerald-400 animate-ping";
+                            text.innerText = `Bot: Aktif ($${kText})`;
+                            btn.className = "px-2.5 py-1 bg-emerald-500/10 hover:bg-emerald-500/20 border border-emerald-500/30 rounded text-xs text-emerald-400 font-semibold transition flex items-center gap-1.5";
+                        } else {
+                            led.className = "w-2 h-2 rounded-full bg-slate-500";
+                            text.innerText = "Bot: Susturuldu";
+                            btn.className = "px-2.5 py-1 bg-darkBg hover:bg-darkBorder border border-darkBorder rounded text-xs text-slate-400 transition flex items-center gap-1.5";
+                        }
+                    }
+                }
+            } catch(e) {}
+        }
+
+        // Her 1.5 saniyede bir kontrol et
+        syncWithBackendBot();
+        setInterval(syncWithBackendBot, 1500);
     </script>
+
+   <script>
+        (function () {
+            const BOT_URL = 'http://localhost:10000';
+
+            function updateTerminalUI(data) {
+                if (!data || typeof data.threshold === 'undefined') return;
+
+                const thresholdVal = Number(data.threshold);
+
+                if (window.userThreshold !== thresholdVal) {
+                    window.userThreshold = thresholdVal;
+
+                    // 1. Ortadaki Eşik girdi kutusu
+                    const threshInput = document.getElementById('thresholdDisplay');
+                    if (threshInput) {
+                        threshInput.value = thresholdVal.toLocaleString('en-US');
+                    }
+
+                    // 2. Sağ üstteki mavi eşik etiketi
+                    const pillLabel = document.getElementById('activePillLabel');
+                    if (pillLabel) {
+                        pillLabel.innerText = `$${thresholdVal.toLocaleString('en-US')}`;
+                    }
+
+                    // 3. Hızlı seçim butonlarının renkleri
+                    document.querySelectorAll('.threshold-pill').forEach((btn) => {
+                        const val = parseFloat(btn.getAttribute('data-val'));
+                        if (val === thresholdVal) {
+                            btn.className = 'threshold-pill py-0.5 bg-accentBlue text-white font-bold border border-accentBlue text-[10px] font-mono rounded';
+                        } else {
+                            btn.className = 'threshold-pill py-0.5 bg-darkBg hover:bg-darkBorder border border-darkBorder text-[10px] font-mono text-slate-300 rounded';
+                        }
+                    });
+
+                    // 4. Tabloyu yeni eşiğe göre yeniden hesapla
+                    if (typeof recalculateAndRender === 'function') {
+                        recalculateAndRender();
+                    }
+                }
+            }
+
+            async function syncLoop() {
+                try {
+                    const res = await fetch(`${BOT_URL}/`);
+                    if (res.ok) {
+                        const data = await res.json();
+                        updateTerminalUI(data);
+                    }
+                } catch (e) {}
+            }
+
+            syncLoop();
+            setInterval(syncLoop, 1500);
+        })();
+    </script>
+
 </body>
 </html>
