@@ -2,7 +2,7 @@
 <html lang="tr" class="dark theme-navy">
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
     <title>WhaleMetric Pro Terminal v4.3 | Remote Bot Controller</title>
     <!-- Tailwind CSS CDN -->
     <script src="https://cdn.tailwindcss.com"></script>
@@ -52,207 +52,210 @@
         --accent-color: #eab308;
     }
 
-    ::-webkit-scrollbar { width: 5px; height: 5px; }
+    ::-webkit-scrollbar { width: 4px; height: 4px; }
     ::-webkit-scrollbar-track { background: var(--bg-main); }
     ::-webkit-scrollbar-thumb { background: var(--border-color); border-radius: 4px; }
     ::-webkit-scrollbar-thumb:hover { background: var(--accent-color); }
+    .no-scrollbar::-webkit-scrollbar { display: none; }
+    .no-scrollbar { -ms-overflow-style: none; scrollbar-width: none; }
 </style>
 </head>
-<body class="bg-darkBg text-slate-200 font-sans h-screen flex flex-col overflow-hidden transition-colors duration-300">
+<body class="bg-darkBg text-slate-200 font-sans min-h-screen md:h-screen flex flex-col md:overflow-hidden transition-colors duration-300">
 
     <!-- ÜST NAVBAR -->
-    <header class="h-14 border-b border-darkBorder bg-darkCard/90 backdrop-blur px-4 flex items-center justify-between shrink-0">
-        <div class="flex items-center gap-3">
-            <span class="text-2xl animate-bounce">🐋</span>
+    <header class="min-h-14 border-b border-darkBorder bg-darkCard/95 backdrop-blur px-3 py-2 md:py-0 flex flex-wrap md:flex-nowrap items-center justify-between gap-2 shrink-0 sticky top-0 z-40">
+        <div class="flex items-center gap-2">
+            <span class="text-xl md:text-2xl animate-bounce">🐋</span>
             <div>
-                <h1 class="text-base font-bold tracking-wider text-white leading-none">WHALE<span class="text-accentBlue">METRIC</span> <span class="text-[10px] px-1.5 py-0.5 rounded bg-accentBlue/20 text-accentBlue font-mono border border-accentBlue/30">REMOTE v4.3</span></h1>
-                <p class="text-[10px] text-slate-400 font-mono mt-0.5">Candlestick Tape • Telegram 2-Way Remote</p>
+                <h1 class="text-sm md:text-base font-bold tracking-wider text-white leading-none">WHALE<span class="text-accentBlue">METRIC</span></h1>
+                <p class="text-[9px] md:text-[10px] text-slate-400 font-mono mt-0.5">Tape • Remote Terminal</p>
             </div>
         </div>
 
-        <div class="flex items-center gap-2">
+        <div class="flex items-center gap-1.5 overflow-x-auto no-scrollbar py-1 max-w-full">
             <!-- Bağlantı Durumu -->
-            <div id="connBadge" class="flex items-center gap-1.5 px-2.5 py-1 rounded-full text-[11px] font-semibold bg-red-500/10 text-red-400 border border-red-500/20">
-                <span class="w-2 h-2 rounded-full bg-red-500 animate-pulse"></span>
+            <div id="connBadge" class="flex items-center gap-1 px-2 py-0.5 rounded-full text-[10px] font-semibold bg-red-500/10 text-red-400 border border-red-500/20 whitespace-nowrap">
+                <span class="w-1.5 h-1.5 rounded-full bg-red-500 animate-pulse"></span>
                 <span id="connText">Bağlanıyor...</span>
             </div>
 
             <!-- Tema Seçici -->
-            <select id="themeSelect" onchange="onThemeChange(this.value)" class="px-2 py-1 bg-darkBg border border-darkBorder rounded text-xs text-slate-300 focus:outline-none font-mono">
-                <option value="theme-navy">🌑 Cyber Navy</option>
-                <option value="theme-cyber">⚡ Matrix Green</option>
-                <option value="theme-slate">🏛️ Bloomberg Slate</option>
+            <select id="themeSelect" onchange="onThemeChange(this.value)" class="px-1.5 py-1 bg-darkBg border border-darkBorder rounded text-[11px] text-slate-300 focus:outline-none font-mono">
+                <option value="theme-navy">🌑 Navy</option>
+                <option value="theme-cyber">⚡ Cyber</option>
+                <option value="theme-slate">🏛️ Slate</option>
             </select>
 
-            <!-- Telegram Bot Butonu & Canlı Durum -->
-            <button id="botStatusBtn" onclick="toggleBotModal()" class="px-2.5 py-1 bg-darkBg hover:bg-darkBorder border border-darkBorder rounded text-xs text-slate-300 transition flex items-center gap-1.5">
-                <span id="botLed" class="w-2 h-2 rounded-full bg-slate-500"></span>
+            <!-- Telegram Bot Butonu -->
+            <button id="botStatusBtn" onclick="toggleBotModal()" class="px-2 py-1 bg-darkBg hover:bg-darkBorder border border-darkBorder rounded text-[11px] text-slate-300 transition flex items-center gap-1 whitespace-nowrap">
+                <span id="botLed" class="w-1.5 h-1.5 rounded-full bg-slate-500"></span>
                 <span id="botStatusText">Bot: Kapalı</span>
             </button>
 
-            <!-- Robotik Sesli Anons Butonu -->
-            <button id="voiceToggle" onclick="toggleVoice()" class="px-2.5 py-1 bg-darkBg hover:bg-darkBorder border border-darkBorder rounded text-xs text-slate-300 transition flex items-center gap-1">
-                🗣️ <span id="voiceText">Sesli Anons: Kapalı</span>
+            <!-- Sesli Anons Butonu -->
+            <button id="voiceToggle" onclick="toggleVoice()" class="px-2 py-1 bg-darkBg hover:bg-darkBorder border border-darkBorder rounded text-[11px] text-slate-300 transition flex items-center gap-1 whitespace-nowrap">
+                🗣️ <span id="voiceText" class="hidden sm:inline">Anons: Kapalı</span>
             </button>
 
             <!-- Bip Sesi Butonu -->
-            <button id="soundToggle" onclick="toggleAudio()" class="px-2.5 py-1 bg-darkBg hover:bg-darkBorder border border-darkBorder rounded text-xs text-slate-300 transition flex items-center gap-1">
-                🔊 <span>Bip: Kapalı</span>
+            <button id="soundToggle" onclick="toggleAudio()" class="px-2 py-1 bg-darkBg hover:bg-darkBorder border border-darkBorder rounded text-[11px] text-slate-300 transition flex items-center gap-1 whitespace-nowrap">
+                🔊 <span class="hidden sm:inline">Bip: Kapalı</span>
             </button>
 
             <!-- TELEGRAM GİRİŞ / PROFİL BUTONU -->
-            <div id="authContainer" class="flex items-center">
-                <button onclick="openLoginModal()" class="px-3 py-1 bg-accentBlue hover:bg-blue-600 text-white font-bold rounded text-xs transition flex items-center gap-1.5 shadow-lg shadow-blue-500/20">
-                    <span>✈️</span> Telegram ile Bağlan
+            <div id="authContainer" class="flex items-center whitespace-nowrap">
+                <button onclick="openLoginModal()" class="px-2.5 py-1 bg-accentBlue hover:bg-blue-600 text-white font-bold rounded text-[11px] transition flex items-center gap-1 shadow-lg shadow-blue-500/20">
+                    <span>✈️</span> <span class="hidden xs:inline">Telegram</span>
                 </button>
             </div>
 
             <!-- CSV Dışa Aktar Butonu -->
-            <button onclick="exportToCSV()" class="px-2.5 py-1 bg-accentBlue/10 hover:bg-accentBlue/20 border border-accentBlue/30 rounded text-xs text-accentBlue font-semibold transition flex items-center gap-1">
+            <button onclick="exportToCSV()" class="px-2 py-1 bg-accentBlue/10 hover:bg-accentBlue/20 border border-accentBlue/30 rounded text-[11px] text-accentBlue font-semibold transition flex items-center gap-0.5">
                 📥 <span>CSV</span>
             </button>
         </div>
     </header>
 
     <!-- ANA GÖVDE -->
-    <div class="flex-1 flex overflow-hidden">
+    <div class="flex-1 flex flex-col md:flex-row overflow-hidden">
         
-        <!-- SOL SIDEBAR (TAKİP LİSTESİ) -->
-        <aside class="w-56 border-r border-darkBorder bg-darkCard/40 flex flex-col shrink-0">
-            <div class="p-2.5 border-b border-darkBorder">
+        <!-- SIDEBAR / MOBİL ÜST KAYDIRMA ŞERİDİ -->
+        <aside class="w-full md:w-56 border-b md:border-b-0 md:border-r border-darkBorder bg-darkCard/40 flex flex-col shrink-0">
+            <div class="p-2 border-b border-darkBorder hidden md:block">
                 <input type="text" id="coinSearch" placeholder="🔍 Kripto Ara..." onkeyup="filterCoins()" class="w-full bg-darkBg border border-darkBorder rounded px-2.5 py-1 text-xs text-slate-200 focus:outline-none focus:border-accentBlue placeholder-slate-500 font-mono">
             </div>
-            <div class="p-2 border-b border-darkBorder flex justify-between text-[10px] text-slate-400 font-mono">
+            <div class="p-1.5 border-b border-darkBorder justify-between text-[10px] text-slate-400 font-mono hidden md:flex">
                 <span>PARİTE</span>
                 <span>SEÇ</span>
             </div>
-            <div id="coinList" class="flex-1 overflow-y-auto p-1.5 space-y-1"></div>
+            <!-- Mobilde yatay kayan, masaüstünde dikey liste -->
+            <div id="coinList" class="flex md:flex-col overflow-x-auto md:overflow-y-auto p-1.5 gap-1.5 no-scrollbar"></div>
         </aside>
 
         <!-- ORTA & SAĞ TERMİNAL ALANI -->
-        <main class="flex-1 flex flex-col p-3 gap-3 overflow-y-auto">
+        <main class="flex-1 flex flex-col p-2 md:p-3 gap-2.5 md:gap-3 overflow-y-auto">
             
             <!-- 1. BİLGİ VE KONTROL KARTLARI -->
-            <div class="grid grid-cols-1 md:grid-cols-4 gap-3 shrink-0">
+            <div class="grid grid-cols-2 md:grid-cols-4 gap-2 md:gap-3 shrink-0">
                 
                 <!-- Aktif Parite & Fiyat -->
-                <div class="bg-darkCard p-3 rounded-lg border border-darkBorder flex items-center justify-between">
+                <div class="bg-darkCard p-2.5 md:p-3 rounded-lg border border-darkBorder flex items-center justify-between">
                     <div>
-                        <div class="text-[10px] text-slate-400 font-mono">AKTİF PARİTE</div>
-                        <div id="activeSymbol" class="text-xl font-bold text-white mt-0.5">BTC / USDT</div>
-                        <div id="activePrice" class="text-xs font-mono font-bold text-accentBlue">$0.00</div>
+                        <div class="text-[9px] md:text-[10px] text-slate-400 font-mono">AKTİF PARİTE</div>
+                        <div id="activeSymbol" class="text-sm md:text-xl font-bold text-white mt-0.5">BTC / USDT</div>
+                        <div id="activePrice" class="text-[11px] md:text-xs font-mono font-bold text-accentBlue">$0.00</div>
                     </div>
-                    <span id="activeCoinIcon" class="text-2xl">₿</span>
+                    <span id="activeCoinIcon" class="text-xl md:text-2xl">₿</span>
                 </div>
 
                 <!-- Özelleştirilebilir Eşik Kontrolü -->
-                <div class="bg-darkCard p-3 rounded-lg border border-darkBorder flex flex-col justify-between">
+                <div class="bg-darkCard p-2.5 md:p-3 rounded-lg border border-darkBorder flex flex-col justify-between col-span-2 md:col-span-1">
                     <div class="flex justify-between items-center mb-1">
-                        <span class="text-[10px] text-slate-400 font-mono font-semibold">MİNİMUM EŞİK</span>
-                        <span id="activePillLabel" class="text-[10px] px-1.5 py-0.5 rounded bg-accentBlue/15 text-accentBlue font-mono font-bold border border-accentBlue/20">$50,000</span>
+                        <span class="text-[9px] md:text-[10px] text-slate-400 font-mono font-semibold">MİNİMUM EŞİK</span>
+                        <span id="activePillLabel" class="text-[9px] md:text-[10px] px-1.5 py-0.5 rounded bg-accentBlue/15 text-accentBlue font-mono font-bold border border-accentBlue/20">$50,000</span>
                     </div>
                     <div class="flex items-center bg-darkBg border border-darkBorder rounded p-0.5 focus-within:border-accentBlue transition">
-                        <button onclick="adjustThreshold(-5000)" class="w-7 h-6 flex items-center justify-center rounded bg-darkCard hover:bg-darkBorder text-slate-300 hover:text-white font-bold text-xs">−</button>
-                        <div class="flex-1 flex items-center justify-center gap-0.5 px-2">
+                        <button onclick="adjustThreshold(-5000)" class="w-6 md:w-7 h-5 md:h-6 flex items-center justify-center rounded bg-darkCard hover:bg-darkBorder text-slate-300 hover:text-white font-bold text-xs">−</button>
+                        <div class="flex-1 flex items-center justify-center gap-0.5 px-1">
                             <span class="text-accentBlue font-bold text-xs">$</span>
-                            <input type="text" id="thresholdDisplay" value="50,000" onchange="onManualThresholdInput(this.value)" class="w-full bg-transparent text-center text-xs font-bold text-white font-mono focus:outline-none">
+                            <input type="text" id="thresholdDisplay" value="50,000" onchange="onManualThresholdInput(this.value)" class="w-full bg-transparent text-center text-[11px] md:text-xs font-bold text-white font-mono focus:outline-none">
                         </div>
-                        <button onclick="adjustThreshold(5000)" class="w-7 h-6 flex items-center justify-center rounded bg-darkCard hover:bg-darkBorder text-slate-300 hover:text-white font-bold text-xs">+</button>
+                        <button onclick="adjustThreshold(5000)" class="w-6 md:w-7 h-5 md:h-6 flex items-center justify-center rounded bg-darkCard hover:bg-darkBorder text-slate-300 hover:text-white font-bold text-xs">+</button>
                     </div>
                     <div class="grid grid-cols-4 gap-1 mt-1.5">
-                        <button onclick="setQuickThreshold(10000)" class="threshold-pill py-0.5 bg-darkBg hover:bg-darkBorder border border-darkBorder text-[10px] font-mono text-slate-300 rounded" data-val="10000">10k</button>
-                        <button onclick="setQuickThreshold(50000)" class="threshold-pill py-0.5 bg-accentBlue text-white font-bold border border-accentBlue text-[10px] font-mono rounded" data-val="50000">50k</button>
-                        <button onclick="setQuickThreshold(100000)" class="threshold-pill py-0.5 bg-darkBg hover:bg-darkBorder border border-darkBorder text-[10px] font-mono text-slate-300 rounded" data-val="100000">100k</button>
-                        <button onclick="setQuickThreshold(250000)" class="threshold-pill py-0.5 bg-darkBg hover:bg-darkBorder border border-darkBorder text-[10px] font-mono text-slate-300 rounded" data-val="250000">250k</button>
+                        <button onclick="setQuickThreshold(10000)" class="threshold-pill py-0.5 bg-darkBg hover:bg-darkBorder border border-darkBorder text-[9px] md:text-[10px] font-mono text-slate-300 rounded" data-val="10000">10k</button>
+                        <button onclick="setQuickThreshold(50000)" class="threshold-pill py-0.5 bg-accentBlue text-white font-bold border border-accentBlue text-[9px] md:text-[10px] font-mono rounded" data-val="50000">50k</button>
+                        <button onclick="setQuickThreshold(100000)" class="threshold-pill py-0.5 bg-darkBg hover:bg-darkBorder border border-darkBorder text-[9px] md:text-[10px] font-mono text-slate-300 rounded" data-val="100000">100k</button>
+                        <button onclick="setQuickThreshold(250000)" class="threshold-pill py-0.5 bg-darkBg hover:bg-darkBorder border border-darkBorder text-[9px] md:text-[10px] font-mono text-slate-300 rounded" data-val="250000">250k</button>
                     </div>
                 </div>
 
                 <!-- Yakalanan Balina & Net Delta -->
-                <div class="bg-darkCard p-3 rounded-lg border border-darkBorder flex flex-col justify-center">
+                <div class="bg-darkCard p-2.5 md:p-3 rounded-lg border border-darkBorder flex flex-col justify-center">
                     <div class="flex justify-between items-center">
-                        <span class="text-[10px] text-slate-400 font-mono">TOPLAM BALİNA</span>
-                        <span class="text-[10px] text-slate-400 font-mono">NET DELTA (CVD)</span>
+                        <span class="text-[9px] md:text-[10px] text-slate-400 font-mono">BALİNA</span>
+                        <span class="text-[9px] md:text-[10px] text-slate-400 font-mono">CVD</span>
                     </div>
                     <div class="flex justify-between items-baseline mt-1">
-                        <div id="whaleCount" class="text-xl font-bold text-white">0</div>
-                        <div id="cvdValue" class="text-sm font-bold font-mono text-whaleGreen">$0</div>
+                        <div id="whaleCount" class="text-base md:text-xl font-bold text-white">0</div>
+                        <div id="cvdValue" class="text-xs md:text-sm font-bold font-mono text-whaleGreen">$0</div>
                     </div>
                 </div>
 
                 <!-- Toplam Balina Hacmi -->
-                <div class="bg-darkCard p-3 rounded-lg border border-darkBorder flex flex-col justify-center">
-                    <div class="text-[10px] text-slate-400 font-mono">TOPLAM FİLTRELENMİŞ HACİM</div>
-                    <div id="totalVolume" class="text-xl font-bold text-white mt-1">$0</div>
+                <div class="bg-darkCard p-2.5 md:p-3 rounded-lg border border-darkBorder flex flex-col justify-center col-span-2 md:col-span-1">
+                    <div class="text-[9px] md:text-[10px] text-slate-400 font-mono">TOPLAM HACİM</div>
+                    <div id="totalVolume" class="text-base md:text-xl font-bold text-white mt-1">$0</div>
                 </div>
 
             </div>
 
             <!-- 2. ALICI / SATICI GÜÇ BAR'I -->
-            <div class="bg-darkCard p-2.5 rounded-lg border border-darkBorder shrink-0">
-                <div class="flex justify-between items-center text-xs font-mono font-bold mb-1.5">
-                    <span class="text-whaleGreen flex items-center gap-1">🟢 ALICI GÜCÜ: <span id="buyRatio">50%</span> (<span id="buyVol">$0</span>)</span>
-                    <span class="text-slate-400 text-[10px]">ANLIK PİYASA HAKİMİYETİ</span>
-                    <span class="text-whaleRed flex items-center gap-1"><span id="sellVol">$0</span> (<span id="sellRatio">50%</span>) SATICI GÜCÜ 🔴</span>
+            <div class="bg-darkCard p-2 md:p-2.5 rounded-lg border border-darkBorder shrink-0">
+                <div class="flex justify-between items-center text-[10px] md:text-xs font-mono font-bold mb-1">
+                    <span class="text-whaleGreen flex items-center gap-1">🟢 ALICI: <span id="buyRatio">50%</span></span>
+                    <span class="text-slate-400 text-[9px] hidden sm:inline">PİYASA HAKİMİYETİ</span>
+                    <span class="text-whaleRed flex items-center gap-1">SATICI: <span id="sellRatio">50%</span> 🔴</span>
                 </div>
-                <div class="w-full h-2.5 bg-darkBg rounded-full overflow-hidden flex border border-darkBorder">
+                <div class="w-full h-2 bg-darkBg rounded-full overflow-hidden flex border border-darkBorder">
                     <div id="buyBar" class="h-full bg-whaleGreen transition-all duration-300" style="width: 50%;"></div>
                     <div id="sellBar" class="h-full bg-whaleRed transition-all duration-300" style="width: 50%;"></div>
                 </div>
             </div>
 
             <!-- 3. TRADINGVIEW MUM GRAFİĞİ & HEATMAP -->
-            <div class="grid grid-cols-1 lg:grid-cols-3 gap-3 shrink-0 h-72">
+            <div class="grid grid-cols-1 lg:grid-cols-3 gap-2.5 md:gap-3 shrink-0">
                 <!-- Canlı Mum Grafiği -->
-                <div class="lg:col-span-2 bg-darkCard p-2.5 rounded-lg border border-darkBorder flex flex-col overflow-hidden">
-                    <div class="flex justify-between items-center mb-1.5 px-1">
+                <div class="lg:col-span-2 bg-darkCard p-2 md:p-2.5 rounded-lg border border-darkBorder flex flex-col h-64 md:h-72 overflow-hidden">
+                    <div class="flex justify-between items-center mb-1 px-1">
                         <div class="flex items-center gap-2">
-                            <span class="text-xs font-bold text-slate-300 font-mono">CANLI 1M MUM GRAFİĞİ</span>
-                            <span class="text-[10px] px-1.5 py-0.5 rounded bg-darkBg text-accentBlue font-mono">Balina Markers 🎯</span>
+                            <span class="text-xs font-bold text-slate-300 font-mono">1M MUM GRAFİĞİ</span>
+                            <span class="text-[9px] px-1 rounded bg-darkBg text-accentBlue font-mono">Markers 🎯</span>
                         </div>
-                        <span class="text-[10px] text-slate-500 font-mono">TradingView Core</span>
+                        <span class="text-[9px] text-slate-500 font-mono">TradingView Core</span>
                     </div>
                     <div id="chartContainer" class="flex-1 w-full h-full relative"></div>
                 </div>
 
                 <!-- Balina Fiyat Yoğunluk Profili (Heatmap) -->
-                <div class="bg-darkCard p-2.5 rounded-lg border border-darkBorder flex flex-col">
-                    <div class="flex justify-between items-center mb-2">
-                        <span class="text-xs font-bold text-slate-400 tracking-wider font-mono">FİYAT YOĞUNLUK HARİTASI</span>
-                        <span class="text-[10px] text-accentBlue font-mono">Heatmap</span>
+                <div class="bg-darkCard p-2 md:p-2.5 rounded-lg border border-darkBorder flex flex-col max-h-48 md:max-h-72">
+                    <div class="flex justify-between items-center mb-1.5">
+                        <span class="text-[11px] font-bold text-slate-400 tracking-wider font-mono">YOĞUNLUK HARİTASI</span>
+                        <span class="text-[9px] text-accentBlue font-mono">Heatmap</span>
                     </div>
-                    <div id="heatmapList" class="flex-1 overflow-y-auto space-y-1.5 font-mono text-[11px]">
-                        <div class="text-slate-500 text-center py-10 text-xs">Yeterli balina verisi toplanıyor...</div>
+                    <div id="heatmapList" class="flex-1 overflow-y-auto space-y-1.5 font-mono text-[10px] md:text-[11px]">
+                        <div class="text-slate-500 text-center py-6 text-xs">Balina verisi toplanıyor...</div>
                     </div>
                 </div>
             </div>
 
             <!-- 4. ÇİFTLİ TABLO (SPOT BALİNA & KALDIRAÇLI LİKİDASYONLAR) -->
-            <div class="grid grid-cols-1 lg:grid-cols-3 gap-3 flex-1 min-h-[300px]">
+            <div class="grid grid-cols-1 lg:grid-cols-3 gap-2.5 md:gap-3 flex-1 min-h-[300px]">
                 
                 <!-- SPOT BALİNA AKIŞI -->
                 <div class="lg:col-span-2 bg-darkCard rounded-lg border border-darkBorder flex flex-col overflow-hidden">
-                    <div class="p-2.5 border-b border-darkBorder flex justify-between items-center bg-darkCard/90">
-                        <div class="flex items-center gap-2">
-                            <span class="w-2 h-2 rounded-full bg-whaleGreen animate-ping"></span>
-                            <h3 class="text-xs font-bold text-slate-300 font-mono uppercase">SPOT BALİNA İŞLEMLERİ</h3>
+                    <div class="p-2 md:p-2.5 border-b border-darkBorder flex justify-between items-center bg-darkCard/90">
+                        <div class="flex items-center gap-1.5">
+                            <span class="w-1.5 h-1.5 rounded-full bg-whaleGreen animate-ping"></span>
+                            <h3 class="text-[11px] md:text-xs font-bold text-slate-300 font-mono uppercase">SPOT BALİNA AKIŞI</h3>
                         </div>
-                        <span class="text-[10px] text-slate-500 font-mono">Otomatik Filtrelenir</span>
+                        <span class="text-[9px] text-slate-500 font-mono">Otomatik</span>
                     </div>
-                    <div class="flex-1 overflow-y-auto">
-                        <table class="w-full text-left text-xs font-mono">
-                            <thead class="bg-darkBg/60 text-slate-400 sticky top-0 border-b border-darkBorder">
+                    <div class="flex-1 overflow-x-auto">
+                        <table class="w-full text-left text-[11px] font-mono min-w-[340px]">
+                            <thead class="bg-darkBg/60 text-slate-400 sticky top-0 border-b border-darkBorder text-[10px]">
                                 <tr>
-                                    <th class="p-2">ZAMAN</th>
-                                    <th class="p-2">PARİTE</th>
-                                    <th class="p-2">TÜR</th>
-                                    <th class="p-2">FİYAT</th>
-                                    <th class="p-2">MİKTAR</th>
-                                    <th class="p-2 text-right">TUTAR</th>
+                                    <th class="p-1.5">ZAMAN</th>
+                                    <th class="p-1.5">PARİTE</th>
+                                    <th class="p-1.5">TÜR</th>
+                                    <th class="p-1.5">FİYAT</th>
+                                    <th class="p-1.5">MİKTAR</th>
+                                    <th class="p-1.5 text-right">TUTAR</th>
                                 </tr>
                             </thead>
                             <tbody id="whaleTableBody" class="divide-y divide-darkBorder/40">
                                 <tr id="emptyRow">
-                                    <td colspan="6" class="p-8 text-center text-slate-500">İşlem bekleniyor...</td>
+                                    <td colspan="6" class="p-6 text-center text-slate-500">İşlem bekleniyor...</td>
                                 </tr>
                             </tbody>
                         </table>
@@ -260,16 +263,16 @@
                 </div>
 
                 <!-- CANLI LİKİDASYON AKIŞI -->
-                <div class="bg-darkCard rounded-lg border border-darkBorder flex flex-col overflow-hidden">
-                    <div class="p-2.5 border-b border-darkBorder flex justify-between items-center bg-darkCard/90">
-                        <div class="flex items-center gap-2">
-                            <span class="text-base">💥</span>
-                            <h3 class="text-xs font-bold text-liqOrange font-mono uppercase">LİKİDASYON RADARI</h3>
+                <div class="bg-darkCard rounded-lg border border-darkBorder flex flex-col overflow-hidden max-h-64 md:max-h-none">
+                    <div class="p-2 md:p-2.5 border-b border-darkBorder flex justify-between items-center bg-darkCard/90">
+                        <div class="flex items-center gap-1.5">
+                            <span class="text-sm">💥</span>
+                            <h3 class="text-[11px] md:text-xs font-bold text-liqOrange font-mono uppercase">LİKİDASYON RADARI</h3>
                         </div>
-                        <span class="text-[10px] text-slate-500 font-mono">Futures ($1k+)</span>
+                        <span class="text-[9px] text-slate-500 font-mono">Futures ($1k+)</span>
                     </div>
-                    <div id="liqContainer" class="flex-1 overflow-y-auto p-2 space-y-1.5 font-mono text-xs">
-                        <div id="emptyLiq" class="p-6 text-center text-slate-500 text-[11px]">Patlayan kaldıraçlı pozisyonlar bekleniyor...</div>
+                    <div id="liqContainer" class="flex-1 overflow-y-auto p-1.5 md:p-2 space-y-1.5 font-mono text-xs">
+                        <div id="emptyLiq" class="p-4 text-center text-slate-500 text-[10px]">Likidasyonlar bekleniyor...</div>
                     </div>
                 </div>
 
@@ -280,40 +283,36 @@
 
     <!-- BOT KONTROL MODAL -->
     <div id="botModal" class="fixed inset-0 bg-black/70 backdrop-blur-sm z-50 hidden flex items-center justify-center p-4">
-        <div class="bg-darkCard border border-darkBorder w-full max-w-lg rounded-xl p-5 shadow-2xl space-y-4">
-            
-            <div class="flex justify-between items-center border-b border-darkBorder pb-3">
+        <div class="bg-darkCard border border-darkBorder w-full max-w-lg rounded-xl p-4 md:p-5 shadow-2xl space-y-3.5">
+            <div class="flex justify-between items-center border-b border-darkBorder pb-2">
                 <div>
-                    <h3 class="font-bold text-white flex items-center gap-2 text-sm">🤖 <span>Telegram Uzaktan Yönetim Merkezi</span></h3>
-                    <p class="text-[11px] text-slate-400">Telefondan /dur, /baslat, /menu komutlarıyla yönetilebilir</p>
+                    <h3 class="font-bold text-white flex items-center gap-1.5 text-xs md:text-sm">🤖 <span>Telegram Yönetim Merkezi</span></h3>
+                    <p class="text-[10px] text-slate-400">Telefondan komutlarla yönetilebilir</p>
                 </div>
-                <button onclick="toggleBotModal()" class="text-slate-400 hover:text-white text-lg font-bold">✕</button>
+                <button onclick="toggleBotModal()" class="text-slate-400 hover:text-white text-base font-bold">✕</button>
             </div>
 
-            <!-- Master ON/OFF Switch -->
-            <div class="flex items-center justify-between p-3 bg-darkBg border border-darkBorder rounded-lg">
+            <div class="flex items-center justify-between p-2.5 bg-darkBg border border-darkBorder rounded-lg">
                 <div>
-                    <div class="text-xs font-bold text-white">Bot Bildirimlerini Çalıştır</div>
-                    <div class="text-[10px] text-slate-400">Tek tıkla botu tamamen sustur veya devreye al</div>
+                    <div class="text-xs font-bold text-white">Bot Bildirimleri</div>
+                    <div class="text-[9px] text-slate-400">Telegram alarmlarını aç / kapat</div>
                 </div>
                 <label class="relative inline-flex items-center cursor-pointer">
                     <input type="checkbox" id="botEnabledToggle" onchange="onBotToggleChange(this.checked)" class="sr-only peer">
-                    <div class="w-11 h-6 bg-slate-700 peer-focus:outline-none rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-slate-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-emerald-500"></div>
+                    <div class="w-10 h-5 bg-slate-700 peer-focus:outline-none rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-slate-300 after:border after:rounded-full after:h-4 after:w-4 after:transition-all peer-checked:bg-emerald-500"></div>
                 </label>
             </div>
             
-            <!-- Gelişmiş Filtreler -->
-            <div class="p-3 bg-darkBg/60 border border-darkBorder rounded-lg space-y-2.5 text-xs font-mono">
-                <div class="text-[11px] font-bold text-accentBlue uppercase">Gelişmiş Alarm Filtreleri</div>
-                
-                <div class="grid grid-cols-2 gap-2">
+            <div class="p-2.5 bg-darkBg/60 border border-darkBorder rounded-lg space-y-2 text-xs font-mono">
+                <div class="text-[10px] font-bold text-accentBlue uppercase">Alarm Filtreleri</div>
+                <div class="grid grid-cols-1 sm:grid-cols-2 gap-2">
                     <div>
                         <label class="block text-slate-400 text-[10px] mb-1">Minimum Alarm Eşiği ($):</label>
-                        <input type="number" id="modalThresholdInput" value="50000" class="w-full bg-darkCard border border-darkBorder rounded px-2 py-1 text-accentBlue font-bold focus:outline-none">
+                        <input type="number" id="modalThresholdInput" value="50000" class="w-full bg-darkCard border border-darkBorder rounded px-2 py-1 text-accentBlue font-bold focus:outline-none text-xs">
                     </div>
                     <div>
                         <label class="block text-slate-400 text-[10px] mb-1">İşlem Yönü:</label>
-                        <select id="modalSideFilter" class="w-full bg-darkCard border border-darkBorder rounded px-2 py-1 text-slate-200 focus:outline-none">
+                        <select id="modalSideFilter" class="w-full bg-darkCard border border-darkBorder rounded px-2 py-1 text-slate-200 focus:outline-none text-xs">
                             <option value="ALL">🟢 Alışlar + 🔴 Satışlar</option>
                             <option value="BUY_ONLY">Sadece Alışlar (🟢)</option>
                             <option value="SELL_ONLY">Sadece Satışlar (🔴)</option>
@@ -322,7 +321,6 @@
                 </div>
             </div>
 
-            <!-- Alt Butonlar -->
             <div class="flex justify-end items-center pt-2 border-t border-darkBorder gap-2">
                 <button onclick="toggleBotModal()" class="px-3 py-1.5 bg-darkBg hover:bg-darkBorder border border-darkBorder rounded text-xs text-slate-300">Kapat</button>
                 <button onclick="saveModalSettings()" class="px-4 py-1.5 bg-accentBlue hover:bg-blue-600 text-white font-bold rounded text-xs shadow-lg shadow-blue-500/20">Kaydet</button>
@@ -332,54 +330,54 @@
 
     <!-- 2 AŞAMALI GÜVENLİ TELEGRAM GİRİŞ MODALI (OTP) -->
     <div id="loginModal" class="fixed inset-0 bg-black/70 backdrop-blur-sm z-50 hidden items-center justify-center p-4">
-        <div class="bg-darkCard border border-darkBorder w-full max-w-sm rounded-xl p-5 shadow-2xl space-y-4">
+        <div class="bg-darkCard border border-darkBorder w-full max-w-sm rounded-xl p-4 md:p-5 shadow-2xl space-y-3.5">
             <div class="flex justify-between items-center border-b border-darkBorder pb-2">
-                <h3 class="font-bold text-white text-sm flex items-center gap-2">🔐 <span>Telegram Güvenli Giriş</span></h3>
+                <h3 class="font-bold text-white text-xs md:text-sm flex items-center gap-1.5">🔐 <span>Telegram Giriş</span></h3>
                 <button onclick="closeLoginModal()" class="text-slate-400 hover:text-white font-bold text-base">✕</button>
             </div>
 
-            <!-- Adım 1: Chat ID Girişi -->
-            <div id="otpStep1" class="space-y-3 font-mono text-xs">
-                <p class="text-[11px] text-slate-300 font-sans">
-                    Telegram Chat ID'nizi girin. Botumuz hesabınıza 6 haneli tek kullanımlık bir şifre gönderecektir:
+            <div id="otpStep1" class="space-y-2.5 font-mono text-xs">
+                <p class="text-[10px] text-slate-300 font-sans">
+                    Telegram Chat ID'nizi girin. Bot tek kullanımlık 6 haneli kod gönderecektir:
                 </p>
                 <div>
-                    <label class="block text-slate-400 text-[10px] mb-1">Telegram Chat ID:</label>
-                    <input type="text" id="loginChatId" placeholder="Örn: 1140305780" class="w-full bg-darkBg border border-darkBorder rounded px-3 py-2 text-white focus:outline-none focus:border-accentBlue">
+                    <label class="block text-slate-400 text-[10px] mb-0.5">Telegram Chat ID:</label>
+                    <input type="text" id="loginChatId" placeholder="Örn: 1140305780" class="w-full bg-darkBg border border-darkBorder rounded px-2.5 py-1.5 text-white focus:outline-none focus:border-accentBlue text-xs">
                 </div>
                 <div>
-                    <label class="block text-slate-400 text-[10px] mb-1">İsminiz (Opsiyonel):</label>
-                    <input type="text" id="loginName" placeholder="Örn: Kadir" class="w-full bg-darkBg border border-darkBorder rounded px-3 py-2 text-white focus:outline-none focus:border-accentBlue">
+                    <label class="block text-slate-400 text-[10px] mb-0.5">İsminiz (Opsiyonel):</label>
+                    <input type="text" id="loginName" placeholder="Örn: Kadir" class="w-full bg-darkBg border border-darkBorder rounded px-2.5 py-1.5 text-white focus:outline-none focus:border-accentBlue text-xs">
                 </div>
-                <div class="pt-2 flex justify-end gap-2">
-                    <button onclick="closeLoginModal()" class="px-3 py-1.5 bg-darkBg hover:bg-darkBorder border border-darkBorder rounded text-xs text-slate-300">İptal</button>
-                    <button id="sendCodeBtn" onclick="requestOtpCode()" class="px-4 py-1.5 bg-accentBlue hover:bg-blue-600 text-white font-bold rounded text-xs flex items-center gap-1.5">
-                        <span>📲 Doğrulama Kodu Gönder</span>
+                <div class="pt-1.5 flex justify-end gap-1.5">
+                    <button onclick="closeLoginModal()" class="px-2.5 py-1 bg-darkBg hover:bg-darkBorder border border-darkBorder rounded text-xs text-slate-300">İptal</button>
+                    <button id="sendCodeBtn" onclick="requestOtpCode()" class="px-3.5 py-1 bg-accentBlue hover:bg-blue-600 text-white font-bold rounded text-xs flex items-center gap-1">
+                        <span>📲 Kod Gönder</span>
                     </button>
                 </div>
             </div>
 
-            <!-- Adım 2: 6 Haneli Kod Onayı -->
-            <div id="otpStep2" class="space-y-3 font-mono text-xs hidden">
-                <p class="text-[11px] text-emerald-400 font-sans">
-                    ✅ Kod Telegram hesabınıza iletildi! Lütfen 6 haneli şifreyi girin:
+            <div id="otpStep2" class="space-y-2.5 font-mono text-xs hidden">
+                <p class="text-[10px] text-emerald-400 font-sans">
+                    ✅ Kod gönderildi! 6 haneli şifreyi girin:
                 </p>
                 <div>
-                    <label class="block text-slate-400 text-[10px] mb-1">6 Haneli Doğrulama Kodu:</label>
-                    <input type="text" id="loginOtpCode" maxlength="6" placeholder="• • • • • •" class="w-full bg-darkBg border border-darkBorder rounded px-3 py-2.5 text-center text-lg font-bold text-accentBlue tracking-widest focus:outline-none focus:border-accentBlue">
+                    <label class="block text-slate-400 text-[10px] mb-0.5">6 Haneli Kod:</label>
+                    <input type="text" id="loginOtpCode" maxlength="6" placeholder="• • • • • •" class="w-full bg-darkBg border border-darkBorder rounded px-2.5 py-2 text-center text-base font-bold text-accentBlue tracking-widest focus:outline-none focus:border-accentBlue">
                 </div>
-                <div class="pt-2 flex justify-between items-center">
-                    <button onclick="backToStep1()" class="text-[11px] text-slate-400 hover:underline">← ID Değiştir</button>
-                    <button onclick="verifyOtpCode()" class="px-4 py-1.5 bg-emerald-500 hover:bg-emerald-600 text-white font-bold rounded text-xs shadow-lg shadow-emerald-500/20">
-                        Doğrula & Giriş Yap
+                <div class="pt-1.5 flex justify-between items-center">
+                    <button onclick="backToStep1()" class="text-[10px] text-slate-400 hover:underline">← Geri</button>
+                    <button onclick="verifyOtpCode()" class="px-3.5 py-1.5 bg-emerald-500 hover:bg-emerald-600 text-white font-bold rounded text-xs shadow-lg shadow-emerald-500/20">
+                        Doğrula & Giriş
                     </button>
                 </div>
             </div>
         </div>
     </div>
 
-    <!-- JAVASCRIPT MOTORU & MERKEZİ BULUT PROFİL SENKRONİZASYONU -->
+    <!-- JAVASCRIPT MOTORU & API ENTEGRASYONU -->
     <script>
+        const API_URL = "https://crypto-whale-radar-2.onrender.com";
+
         const COINS = [
             { symbol: "BTCUSDT", name: "Bitcoin", icon: "₿" },
             { symbol: "ETHUSDT", name: "Ethereum", icon: "Ξ" },
@@ -405,7 +403,7 @@
         let voiceEnabled = false;
         let currentSideFilter = 'ALL';
         let audioCtx = null;
-        let isSyncingLocal = false; // Gel-git (flicker) engelleyici
+        let isSyncingLocal = false;
         let currentAuthUser = JSON.parse(localStorage.getItem('wm_user') || 'null');
 
         function getActiveChatId() {
@@ -421,7 +419,6 @@
         let currentCandle = null;
         let chartMarkers = [];
 
-        // Kullanıcı Profilini ve Ayarlarını UI'a Basar
         function applyUserProfile(user) {
             if (!user) return;
 
@@ -450,8 +447,8 @@
                 const vText = document.getElementById('voiceText');
                 const vBtn = document.getElementById('voiceToggle');
                 if (vText && vBtn) {
-                    vText.innerText = voiceEnabled ? 'Sesli Anons: Açık' : 'Sesli Anons: Kapalı';
-                    vBtn.className = voiceEnabled ? 'px-2.5 py-1 bg-accentBlue text-white rounded text-xs transition flex items-center gap-1' : 'px-2.5 py-1 bg-darkBg hover:bg-darkBorder border border-darkBorder rounded text-xs text-slate-300 transition flex items-center gap-1';
+                    vText.innerText = voiceEnabled ? 'Anons: Açık' : 'Anons: Kapalı';
+                    vBtn.className = voiceEnabled ? 'px-2 py-1 bg-accentBlue text-white rounded text-[11px] transition flex items-center gap-1 whitespace-nowrap' : 'px-2 py-1 bg-darkBg hover:bg-darkBorder border border-darkBorder rounded text-[11px] text-slate-300 transition flex items-center gap-1 whitespace-nowrap';
                 }
             }
 
@@ -459,8 +456,8 @@
                 audioEnabled = Boolean(user.sound_enabled);
                 const sBtn = document.getElementById('soundToggle');
                 if (sBtn) {
-                    sBtn.innerHTML = audioEnabled ? '🔊 <span>Bip: Açık</span>' : '🔇 <span>Bip: Kapalı</span>';
-                    sBtn.className = audioEnabled ? 'px-2.5 py-1 bg-accentBlue text-white rounded text-xs transition flex items-center gap-1' : 'px-2.5 py-1 bg-darkBg hover:bg-darkBorder border border-darkBorder rounded text-xs text-slate-300 transition flex items-center gap-1';
+                    sBtn.innerHTML = audioEnabled ? '🔊 <span class="hidden sm:inline">Bip: Açık</span>' : '🔇 <span class="hidden sm:inline">Bip: Kapalı</span>';
+                    sBtn.className = audioEnabled ? 'px-2 py-1 bg-accentBlue text-white rounded text-[11px] transition flex items-center gap-1 whitespace-nowrap' : 'px-2 py-1 bg-darkBg hover:bg-darkBorder border border-darkBorder rounded text-[11px] text-slate-300 transition flex items-center gap-1 whitespace-nowrap';
                 }
             }
 
@@ -473,13 +470,13 @@
             const btn = document.getElementById('botStatusBtn');
 
             if (isBotEnabled && currentAuthUser) {
-                led.className = "w-2 h-2 rounded-full bg-emerald-400 animate-ping";
-                text.innerText = `Bot: Aktif ($${(userThreshold/1000)}k)`;
-                btn.className = "px-2.5 py-1 bg-emerald-500/10 hover:bg-emerald-500/20 border border-emerald-500/30 rounded text-xs text-emerald-400 font-semibold transition flex items-center gap-1.5";
+                led.className = "w-1.5 h-1.5 rounded-full bg-emerald-400 animate-ping";
+                text.innerText = `Bot: $${(userThreshold/1000)}k`;
+                btn.className = "px-2 py-1 bg-emerald-500/10 hover:bg-emerald-500/20 border border-emerald-500/30 rounded text-[11px] text-emerald-400 font-semibold transition flex items-center gap-1 whitespace-nowrap";
             } else {
-                led.className = "w-2 h-2 rounded-full bg-slate-500";
-                text.innerText = "Bot: Susturuldu";
-                btn.className = "px-2.5 py-1 bg-darkBg hover:bg-darkBorder border border-darkBorder rounded text-xs text-slate-400 transition flex items-center gap-1.5";
+                led.className = "w-1.5 h-1.5 rounded-full bg-slate-500";
+                text.innerText = "Bot: Kapalı";
+                btn.className = "px-2 py-1 bg-darkBg hover:bg-darkBorder border border-darkBorder rounded text-[11px] text-slate-400 transition flex items-center gap-1 whitespace-nowrap";
             }
         }
 
@@ -578,7 +575,6 @@
             } catch(e) {}
         }
 
-        // TEMA YÖNETİMİ & BULUTA KAYIT
         function onThemeChange(themeName) {
             changeTheme(themeName, true);
         }
@@ -591,18 +587,17 @@
             }
         }
 
-        // SES VE ANONSLARI BULUTA KAYIT
         function toggleVoice() {
             voiceEnabled = !voiceEnabled;
             const btn = document.getElementById('voiceToggle');
             const text = document.getElementById('voiceText');
             if (voiceEnabled) {
-                btn.className = 'px-2.5 py-1 bg-accentBlue text-white rounded text-xs transition flex items-center gap-1';
-                text.innerText = 'Sesli Anons: Açık';
+                btn.className = 'px-2 py-1 bg-accentBlue text-white rounded text-[11px] transition flex items-center gap-1 whitespace-nowrap';
+                text.innerText = 'Anons: Açık';
                 speakAnnouncement("Voice radar active");
             } else {
-                btn.className = 'px-2.5 py-1 bg-darkBg hover:bg-darkBorder border border-darkBorder rounded text-xs text-slate-300 transition flex items-center gap-1';
-                text.innerText = 'Sesli Anons: Kapalı';
+                btn.className = 'px-2 py-1 bg-darkBg hover:bg-darkBorder border border-darkBorder rounded text-[11px] text-slate-300 transition flex items-center gap-1 whitespace-nowrap';
+                text.innerText = 'Anons: Kapalı';
             }
             if (currentAuthUser) saveSettingsToCloud({ voice_enabled: voiceEnabled });
         }
@@ -611,8 +606,8 @@
             audioEnabled = !audioEnabled;
             if (audioEnabled && !audioCtx) audioCtx = new (window.AudioContext || window.webkitAudioContext)();
             const btn = document.getElementById('soundToggle');
-            btn.innerHTML = audioEnabled ? '🔊 <span>Bip: Açık</span>' : '🔇 <span>Bip: Kapalı</span>';
-            btn.className = audioEnabled ? 'px-2.5 py-1 bg-accentBlue text-white rounded text-xs transition flex items-center gap-1' : 'px-2.5 py-1 bg-darkBg hover:bg-darkBorder border border-darkBorder rounded text-xs text-slate-300 transition flex items-center gap-1';
+            btn.innerHTML = audioEnabled ? '🔊 <span class="hidden sm:inline">Bip: Açık</span>' : '🔇 <span class="hidden sm:inline">Bip: Kapalı</span>';
+            btn.className = audioEnabled ? 'px-2 py-1 bg-accentBlue text-white rounded text-[11px] transition flex items-center gap-1 whitespace-nowrap' : 'px-2 py-1 bg-darkBg hover:bg-darkBorder border border-darkBorder rounded text-[11px] text-slate-300 transition flex items-center gap-1 whitespace-nowrap';
             if (currentAuthUser) saveSettingsToCloud({ sound_enabled: audioEnabled });
         }
 
@@ -648,17 +643,17 @@
             COINS.forEach(c => {
                 const isActive = c.symbol === activeSymbol;
                 const btn = document.createElement('button');
-                btn.className = `w-full px-3 py-2 rounded-lg flex items-center justify-between text-xs transition coin-btn ${
-                    isActive ? 'bg-accentBlue text-white font-bold shadow-md shadow-blue-500/20' : 'text-slate-300 hover:bg-darkBorder/60'
+                btn.className = `px-2.5 py-1.5 md:py-2 rounded-lg flex items-center justify-between text-xs transition coin-btn whitespace-nowrap shrink-0 ${
+                    isActive ? 'bg-accentBlue text-white font-bold shadow-md shadow-blue-500/20' : 'bg-darkBg md:bg-transparent text-slate-300 hover:bg-darkBorder/60'
                 }`;
                 btn.onclick = () => selectCoin(c.symbol);
                 btn.id = `btn-${c.symbol}`;
                 btn.innerHTML = `
-                    <div class="flex items-center gap-2">
+                    <div class="flex items-center gap-1.5">
                         <span>${c.icon}</span>
                         <div class="text-left">
-                            <div class="leading-none">${c.symbol.replace('USDT', '')}</div>
-                            <div class="text-[10px] opacity-70 mt-0.5">${c.name}</div>
+                            <div class="leading-none text-[11px] md:text-xs">${c.symbol.replace('USDT', '')}</div>
+                            <div class="text-[9px] opacity-70 mt-0.5 hidden md:block">${c.name}</div>
                         </div>
                     </div>
                 `;
@@ -685,14 +680,11 @@
             recalculateAndRender();
         }
 
-        // ==========================================
-        // BULUT AYAR GÖNDERME & SENKRONİZASYON
-        // ==========================================
         async function saveSettingsToCloud(settingsObj) {
             const cid = getActiveChatId();
             if (!cid) return;
             try {
-                await fetch('http://localhost:10000/api/user/save-settings', {
+                await fetch(`${API_URL}/api/user/save-settings`, {
                     method: 'POST',
                     headers: { 'Content-Type': 'application/json' },
                     body: JSON.stringify({ chat_id: String(cid), settings: settingsObj })
@@ -717,7 +709,7 @@
             syncBotBadge();
 
             try {
-                const res = await fetch('http://localhost:10000/api/command', {
+                const res = await fetch(`${API_URL}/api/command`, {
                     method: 'POST',
                     headers: { 'Content-Type': 'application/json' },
                     body: JSON.stringify({ command: String(numVal), chat_id: String(cid) })
@@ -737,7 +729,7 @@
                     syncBotBadge();
                 }
             } catch(e) {
-                console.error("Eşik gönderim hatası:", e);
+                console.error("Eşik hatası:", e);
             } finally {
                 setTimeout(() => { isSyncingLocal = false; }, 2500);
             }
@@ -766,14 +758,13 @@
             document.querySelectorAll('.threshold-pill').forEach(btn => {
                 const btnVal = parseFloat(btn.getAttribute('data-val'));
                 if (btnVal === userThreshold) {
-                    btn.className = "threshold-pill py-0.5 bg-accentBlue text-white font-bold border border-accentBlue text-[10px] font-mono rounded";
+                    btn.className = "threshold-pill py-0.5 bg-accentBlue text-white font-bold border border-accentBlue text-[9px] md:text-[10px] font-mono rounded";
                 } else {
-                    btn.className = "threshold-pill py-0.5 bg-darkBg hover:bg-darkBorder border border-darkBorder text-[10px] font-mono text-slate-300 rounded";
+                    btn.className = "threshold-pill py-0.5 bg-darkBg hover:bg-darkBorder border border-darkBorder text-[9px] md:text-[10px] font-mono text-slate-300 rounded";
                 }
             });
         }
 
-        // BOT MODAL YÖNETİMİ
         function toggleBotModal() {
             const modal = document.getElementById('botModal');
             modal.classList.toggle('hidden');
@@ -790,7 +781,7 @@
             }
         }
 
-       function saveModalSettings() {
+        function saveModalSettings() {
             if (!currentAuthUser) {
                 alert("🔒 Bu ayarları değiştirmek için önce giriş yapmalısınız.");
                 openLoginModal();
@@ -805,13 +796,13 @@
             saveSettingsToCloud({ side_filter: sVal });
             
             toggleBotModal();
-            alert("✅ Tercihleriniz profilinize kaydedildi!");
+            alert("✅ Tercihleriniz kaydedildi!");
         }
 
         function renderHeatmap(trades) {
             const heatmapList = document.getElementById('heatmapList');
             if (!trades || trades.length === 0) {
-                heatmapList.innerHTML = `<div class="text-slate-500 text-center py-10 text-xs">Yeterli balina verisi toplanıyor...</div>`;
+                heatmapList.innerHTML = `<div class="text-slate-500 text-center py-6 text-xs">Balina verisi toplanıyor...</div>`;
                 return;
             }
 
@@ -835,11 +826,11 @@
                 const row = document.createElement('div');
                 row.className = 'space-y-0.5';
                 row.innerHTML = `
-                    <div class="flex justify-between text-[10px]">
+                    <div class="flex justify-between text-[9px] md:text-[10px]">
                         <span class="font-bold text-slate-300">$${Number(price).toLocaleString()}</span>
                         <span class="${isDominantBuy ? 'text-whaleGreen' : 'text-whaleRed'} font-semibold">$${data.vol.toLocaleString('en-US', {maximumFractionDigits: 0})}</span>
                     </div>
-                    <div class="w-full h-1.5 bg-darkBg rounded overflow-hidden flex">
+                    <div class="w-full h-1 bg-darkBg rounded overflow-hidden flex">
                         <div class="h-full ${isDominantBuy ? 'bg-whaleGreen' : 'bg-whaleRed'}" style="width: ${widthPct}%;"></div>
                     </div>
                 `;
@@ -866,21 +857,19 @@
             
             const cvdEl = document.getElementById('cvdValue');
             cvdEl.innerText = `${netCvd >= 0 ? '+' : ''}$${netCvd.toLocaleString('en-US', {maximumFractionDigits: 0})}`;
-            cvdEl.className = `text-sm font-bold font-mono ${netCvd >= 0 ? 'text-whaleGreen' : 'text-whaleRed'}`;
+            cvdEl.className = `text-xs md:text-sm font-bold font-mono ${netCvd >= 0 ? 'text-whaleGreen' : 'text-whaleRed'}`;
 
             const buyRatio = totalVol > 0 ? ((buyVol / totalVol) * 100) : 50;
             const sellRatio = totalVol > 0 ? ((sellVol / totalVol) * 100) : 50;
-            document.getElementById('buyRatio').innerText = `${buyRatio.toFixed(1)}%`;
-            document.getElementById('sellRatio').innerText = `${sellRatio.toFixed(1)}%`;
-            document.getElementById('buyVol').innerText = `$${buyVol.toLocaleString('en-US', {maximumFractionDigits: 0})}`;
-            document.getElementById('sellVol').innerText = `$${sellVol.toLocaleString('en-US', {maximumFractionDigits: 0})}`;
+            document.getElementById('buyRatio').innerText = `${buyRatio.toFixed(0)}%`;
+            document.getElementById('sellRatio').innerText = `${sellRatio.toFixed(0)}%`;
             document.getElementById('buyBar').style.width = `${buyRatio}%`;
             document.getElementById('sellBar').style.width = `${sellRatio}%`;
 
             const tbody = document.getElementById('whaleTableBody');
             tbody.innerHTML = '';
             if (filtered.length === 0) {
-                tbody.innerHTML = `<tr id="emptyRow"><td colspan="6" class="p-8 text-center text-slate-500">$${userThreshold.toLocaleString()} üzerinde işlem bekleniyor...</td></tr>`;
+                tbody.innerHTML = `<tr id="emptyRow"><td colspan="6" class="p-6 text-center text-slate-500">$${userThreshold.toLocaleString()} üzerinde işlem bekleniyor...</td></tr>`;
             } else {
                 filtered.slice(0, 50).forEach(t => renderTableRow(t, false));
             }
@@ -899,12 +888,12 @@
             
             const time = new Date(whale.timestamp).toLocaleTimeString();
             tr.innerHTML = `
-                <td class="p-2 text-slate-400">${time}</td>
-                <td class="p-2 font-bold text-slate-200">${whale.symbol.replace('USDT', '')}</td>
-                <td class="p-2"><span class="px-1.5 py-0.5 rounded text-[10px] font-bold ${isBuy ? 'bg-whaleGreen/20 text-whaleGreen' : 'bg-whaleRed/20 text-whaleRed'}">${whale.type}</span></td>
-                <td class="p-2 font-bold text-slate-200">$${whale.price.toLocaleString()}</td>
-                <td class="p-2 text-slate-400">${whale.quantity.toFixed(3)}</td>
-                <td class="p-2 text-right font-bold ${isBuy ? 'text-whaleGreen' : 'text-whaleRed'}">$${whale.total_usd.toLocaleString('en-US', {maximumFractionDigits: 0})}</td>
+                <td class="p-1.5 text-slate-400 text-[10px]">${time}</td>
+                <td class="p-1.5 font-bold text-slate-200">${whale.symbol.replace('USDT', '')}</td>
+                <td class="p-1.5"><span class="px-1 py-0.5 rounded text-[9px] font-bold ${isBuy ? 'bg-whaleGreen/20 text-whaleGreen' : 'bg-whaleRed/20 text-whaleRed'}">${whale.type}</span></td>
+                <td class="p-1.5 font-bold text-slate-200">$${whale.price.toLocaleString()}</td>
+                <td class="p-1.5 text-slate-400">${whale.quantity.toFixed(2)}</td>
+                <td class="p-1.5 text-right font-bold ${isBuy ? 'text-whaleGreen' : 'text-whaleRed'}">$${whale.total_usd.toLocaleString('en-US', {maximumFractionDigits: 0})}</td>
             `;
 
             if (prepend) {
@@ -925,14 +914,14 @@
             const colorClass = isShortLiq ? 'border-whaleGreen/40 bg-whaleGreen/10 text-whaleGreen' : 'border-whaleRed/40 bg-whaleRed/10 text-whaleRed';
 
             const card = document.createElement('div');
-            card.className = `p-2 rounded border ${colorClass} flex justify-between items-center text-xs animate-pulse`;
+            card.className = `p-1.5 md:p-2 rounded border ${colorClass} flex justify-between items-center text-[11px] animate-pulse`;
             card.innerHTML = `
                 <div>
-                    <div class="font-bold flex items-center gap-1">💥 ${liq.symbol.replace('USDT', '')} <span class="text-[10px] px-1 rounded bg-darkBg/60">${posType}</span></div>
-                    <div class="text-[10px] text-slate-400 mt-0.5">${new Date(liq.time).toLocaleTimeString()} | Fiyat: $${liq.price.toLocaleString()}</div>
+                    <div class="font-bold flex items-center gap-1">💥 ${liq.symbol.replace('USDT', '')} <span class="text-[9px] px-1 rounded bg-darkBg/60">${posType}</span></div>
+                    <div class="text-[9px] text-slate-400 mt-0.5">${new Date(liq.time).toLocaleTimeString()} | $${liq.price.toLocaleString()}</div>
                 </div>
                 <div class="text-right">
-                    <div class="font-bold text-sm">$${liq.total_usd.toLocaleString('en-US', {maximumFractionDigits: 0})}</div>
+                    <div class="font-bold text-xs md:text-sm">$${liq.total_usd.toLocaleString('en-US', {maximumFractionDigits: 0})}</div>
                 </div>
             `;
 
@@ -976,9 +965,9 @@
                 const fapiWs = new WebSocket('wss://fstream.binance.com/ws/!forceOrder@arr');
 
                 spotWs.onopen = () => {
-                    badge.className = "flex items-center gap-1.5 px-2.5 py-1 rounded-full text-[11px] font-semibold bg-emerald-500/10 text-emerald-400 border border-emerald-500/20";
-                    badge.children[0].className = "w-2 h-2 rounded-full bg-emerald-500";
-                    text.innerText = "Spot & Futures Yayında";
+                    badge.className = "flex items-center gap-1 px-2 py-0.5 rounded-full text-[10px] font-semibold bg-emerald-500/10 text-emerald-400 border border-emerald-500/20 whitespace-nowrap";
+                    badge.children[0].className = "w-1.5 h-1.5 rounded-full bg-emerald-500";
+                    text.innerText = "Canlı Yayın";
                 };
 
                 spotWs.onmessage = (event) => {
@@ -1053,23 +1042,20 @@
                 };
 
                 spotWs.onerror = () => {
-                    badge.className = "flex items-center gap-1.5 px-2.5 py-1 rounded-full text-[11px] font-semibold bg-red-500/10 text-red-400 border border-red-500/20";
-                    badge.children[0].className = "w-2 h-2 rounded-full bg-red-500 animate-pulse";
-                    text.innerText = "Yeniden Bağlanıyor...";
+                    badge.className = "flex items-center gap-1 px-2 py-0.5 rounded-full text-[10px] font-semibold bg-red-500/10 text-red-400 border border-red-500/20 whitespace-nowrap";
+                    badge.children[0].className = "w-1.5 h-1.5 rounded-full bg-red-500 animate-pulse";
+                    text.innerText = "Koptu";
                 };
 
                 spotWs.onclose = () => {
-                    badge.className = "flex items-center gap-1.5 px-2.5 py-1 rounded-full text-[11px] font-semibold bg-red-500/10 text-red-400 border border-red-500/20";
-                    badge.children[0].className = "w-2 h-2 rounded-full bg-red-500 animate-pulse";
-                    text.innerText = "Yeniden Bağlanıyor...";
+                    badge.className = "flex items-center gap-1 px-2 py-0.5 rounded-full text-[10px] font-semibold bg-red-500/10 text-red-400 border border-red-500/20 whitespace-nowrap";
+                    badge.children[0].className = "w-1.5 h-1.5 rounded-full bg-red-500 animate-pulse";
+                    text.innerText = "Yenileniyor...";
                     setTimeout(initWebSocket, 3000);
                 };
             } catch(e) {}
         }
 
-        // ==========================================
-        // TELEGRAM OTP GİRİŞ MODAL VE DOĞRULAMA
-        // ==========================================
         function openLoginModal() {
             const modal = document.getElementById('loginModal');
             if (modal) {
@@ -1115,7 +1101,7 @@
             }
 
             try {
-                const res = await fetch('http://localhost:10000/api/auth/send-code', {
+                const res = await fetch(`${API_URL}/api/auth/send-code`, {
                     method: 'POST',
                     headers: { 'Content-Type': 'application/json' },
                     body: JSON.stringify({ id: chatId, first_name: name })
@@ -1133,10 +1119,10 @@
                 }
             } catch(e) {
                 console.error("OTP Hata:", e);
-                alert("❌ Bot sunucusuna ulaşılamadı!\nTerminalde 'python bot.py' çalışıyor mu kontrol edin.");
+                alert("❌ Sunucu bağlantı hatası!");
             } finally {
                 if (btn) {
-                    btn.innerText = "📲 Doğrulama Kodu Gönder";
+                    btn.innerText = "📲 Kod Gönder";
                     btn.disabled = false;
                 }
             }
@@ -1155,7 +1141,7 @@
             }
 
             try {
-                const res = await fetch('http://localhost:10000/api/auth/verify-code', {
+                const res = await fetch(`${API_URL}/api/auth/verify-code`, {
                     method: 'POST',
                     headers: { 'Content-Type': 'application/json' },
                     body: JSON.stringify({ id: chatId, code: code })
@@ -1169,13 +1155,13 @@
                     renderAuthUI();
                     applyUserProfile(data.user);
                     closeLoginModal();
-                    alert(`✅ Hoş geldin, ${data.user.first_name || 'Trader'}! Ayarlarınız yüklendi.`);
+                    alert(`✅ Hoş geldin, ${data.user.first_name || 'Trader'}!`);
                 } else {
                     alert("❌ " + (data.msg || "Doğrulama başarısız!"));
                 }
             } catch(e) {
                 console.error("Doğrulama Hata:", e);
-                alert("❌ Sunucu bağlantı hatası oluştu!");
+                alert("❌ Sunucu bağlantı hatası!");
             }
         }
 
@@ -1185,16 +1171,16 @@
 
             if (currentAuthUser) {
                 container.innerHTML = `
-                    <div class="flex items-center gap-2 bg-darkBg border border-darkBorder px-2.5 py-1 rounded-lg">
+                    <div class="flex items-center gap-1.5 bg-darkBg border border-darkBorder px-2 py-0.5 rounded-lg">
                         <span class="text-xs">👤</span>
-                        <span class="text-xs font-mono font-bold text-white">${currentAuthUser.first_name || 'Trader'}</span>
-                        <button onclick="logoutTelegram()" class="text-[10px] text-rose-400 hover:underline ml-1">Çıkış</button>
+                        <span class="text-[11px] font-mono font-bold text-white">${currentAuthUser.first_name || 'Trader'}</span>
+                        <button onclick="logoutTelegram()" class="text-[9px] text-rose-400 hover:underline ml-0.5">Çıkış</button>
                     </div>
                 `;
             } else {
                 container.innerHTML = `
-                    <button onclick="openLoginModal()" class="px-3 py-1 bg-accentBlue hover:bg-blue-600 text-white font-bold rounded text-xs transition flex items-center gap-1.5 shadow-lg shadow-blue-500/20">
-                        <span>✈️</span> Telegram ile Bağlan
+                    <button onclick="openLoginModal()" class="px-2.5 py-1 bg-accentBlue hover:bg-blue-600 text-white font-bold rounded text-[11px] transition flex items-center gap-1 shadow-lg shadow-blue-500/20 whitespace-nowrap">
+                        <span>✈️</span> <span class="hidden xs:inline">Telegram</span>
                     </button>
                 `;
             }
@@ -1206,7 +1192,6 @@
             location.reload();
         }
 
-        // CANLI TELEGRAM & BOT SENKRONİZASYONU (POLLING)
         async function syncWithBackendBot() {
             if (isSyncingLocal) return;
 
@@ -1214,7 +1199,7 @@
             if (!cid) return;
 
             try {
-                const res = await fetch(`http://localhost:10000/?chat_id=${cid}`);
+                const res = await fetch(`${API_URL}/?chat_id=${cid}`);
                 if (!res.ok) return;
                 const data = await res.json();
 
@@ -1233,7 +1218,7 @@
             } catch(e) {}
         }
 
-        // BAŞLATICI
+        // Başlatıcılar
         const initialTheme = localStorage.getItem('whaleTheme') || 'theme-navy';
         changeTheme(initialTheme, false);
         const tSel = document.getElementById('themeSelect');
@@ -1250,7 +1235,6 @@
             syncBotBadge();
         }
 
-        // Canlı Polling
         syncWithBackendBot();
         setInterval(syncWithBackendBot, 1500);
     </script>
