@@ -39,9 +39,9 @@ db_lock = threading.Lock()
 pending_auth_codes = {}
 auth_lock = threading.Lock()
 
-# 24 Saatlik İstatistik Hafızası (Rolling 24h Buffer)
+# 24 Saatlik İstatistik Hafızası
 stats_lock = threading.Lock()
-rolling_trades_24h = []  # [{symbol, type, price, total_usd, timestamp}]
+rolling_trades_24h = []
 
 def log(msg):
     print(f"[{time.strftime('%H:%M:%S')}] {msg}", flush=True)
@@ -66,6 +66,7 @@ def init_db():
                 sound_enabled INTEGER DEFAULT 0,
                 side_filter TEXT DEFAULT 'ALL',
                 daily_report INTEGER DEFAULT 1,
+                report_time TEXT DEFAULT '09:00',
                 created_at INTEGER
             )
         """)
@@ -80,6 +81,8 @@ def init_db():
             c.execute("ALTER TABLE users ADD COLUMN side_filter TEXT DEFAULT 'ALL'")
         if "daily_report" not in cols:
             c.execute("ALTER TABLE users ADD COLUMN daily_report INTEGER DEFAULT 1")
+        if "report_time" not in cols:
+            c.execute("ALTER TABLE users ADD COLUMN report_time TEXT DEFAULT '09:00'")
         conn.commit()
         conn.close()
 
@@ -89,7 +92,7 @@ def get_user_profile(chat_id):
         conn = sqlite3.connect(DB_PATH)
         c = conn.cursor()
         c.execute("""
-            SELECT chat_id, first_name, threshold, enabled, tracked_coins, theme, voice_enabled, sound_enabled, side_filter, daily_report
+            SELECT chat_id, first_name, threshold, enabled, tracked_coins, theme, voice_enabled, sound_enabled, side_filter, daily_report, report_time
             FROM users WHERE chat_id = ?
         """, (chat_id,))
         row = c.fetchone()
@@ -105,7 +108,8 @@ def get_user_profile(chat_id):
                 "voice_enabled": bool(row[6]),
                 "sound_enabled": bool(row[7]),
                 "side_filter": row[8] or "ALL",
-                "daily_report": bool(row[9])
+                "daily_report": bool(row[9]),
+                "report_time": row[10] or "09:00"
             }
         return None
 
@@ -119,8 +123,8 @@ def get_or_create_verified_user(chat_id, first_name="", username=""):
         c = conn.cursor()
         now = int(time.time())
         c.execute("""
-            INSERT OR REPLACE INTO users (chat_id, username, first_name, threshold, enabled, tracked_coins, theme, voice_enabled, sound_enabled, side_filter, daily_report, created_at)
-            VALUES (?, ?, ?, 50000.0, 1, 'ALL', 'theme-navy', 0, 0, 'ALL', 1, ?)
+            INSERT OR REPLACE INTO users (chat_id, username, first_name, threshold, enabled, tracked_coins, theme, voice_enabled, sound_enabled, side_filter, daily_report, report_time, created_at)
+            VALUES (?, ?, ?, 50000.0, 1, 'ALL', 'theme-navy', 0, 0, 'ALL', 1, '09:00', ?)
         """, (chat_id, username, first_name, now))
         conn.commit()
         conn.close()
@@ -128,7 +132,7 @@ def get_or_create_verified_user(chat_id, first_name="", username=""):
 
 def update_user_settings(chat_id, settings_dict):
     chat_id = str(chat_id).strip()
-    allowed_cols = ["threshold", "enabled", "tracked_coins", "theme", "voice_enabled", "sound_enabled", "side_filter", "daily_report", "first_name"]
+    allowed_cols = ["threshold", "enabled", "tracked_coins", "theme", "voice_enabled", "sound_enabled", "side_filter", "daily_report", "report_time", "first_name"]
     with db_lock:
         conn = sqlite3.connect(DB_PATH)
         c = conn.cursor()
@@ -153,17 +157,17 @@ def get_all_active_users():
         conn.close()
         return [{"chat_id": r[0], "threshold": float(r[1]), "tracked_coins": r[2], "side_filter": r[3]} for r in rows]
 
-def get_daily_report_subscribers():
+def get_due_daily_report_users(current_hhmm):
     with db_lock:
         conn = sqlite3.connect(DB_PATH)
         c = conn.cursor()
-        c.execute("SELECT chat_id, first_name FROM users WHERE daily_report = 1")
+        c.execute("SELECT chat_id, first_name FROM users WHERE daily_report = 1 AND report_time = ?", (current_hhmm,))
         rows = c.fetchall()
         conn.close()
         return [{"chat_id": r[0], "first_name": r[1]} for r in rows]
 
 # ----------------------------------------------------
-# 3. İSTATİSTİK VE GÜNLÜK RAPOR OLUŞTURUCU
+# 3. İSTATİSTİK VE GÜNLÜK RAPOR MOTORU
 # ----------------------------------------------------
 def record_trade_for_stats(trade_obj):
     now_ms = int(time.time() * 1000)
@@ -215,7 +219,6 @@ def generate_daily_report_text():
     net_flow = total_buy - total_sell
     flow_icon = "🟢 Net Alım Baskısı" if net_flow >= 0 else "🔴 Net Satış Baskısı"
 
-    # En çok net alım alan ilk 3 coin
     sorted_by_net_buy = sorted(
         coin_data.items(),
         key=lambda x: (x[1]["buy"] - x[1]["sell"]),
@@ -223,7 +226,6 @@ def generate_daily_report_text():
     )
     top_buys = [x for x in sorted_by_net_buy if (x[1]["buy"] - x[1]["sell"]) > 0][:3]
 
-    # En çok net satılan ilk 3 coin
     sorted_by_net_sell = sorted(
         coin_data.items(),
         key=lambda x: (x[1]["sell"] - x[1]["buy"]),
@@ -266,30 +268,29 @@ def generate_daily_report_text():
     msg += "\n🎯 <i>Detaylı canlı radar için terminalinizi kontrol edin.</i>"
     return msg
 
-# Otomatik Günlük Rapor Zamanlayıcısı (Her Gün 09:00 TSİ)
+# Kişiye Özel Saatli Bülten Gönderici
 def daily_digest_scheduler():
     tr_tz = timezone(timedelta(hours=3))
-    last_sent_day = None
+    last_sent_minute = None
 
     while True:
         try:
             now_tr = datetime.now(tr_tz)
-            current_day = now_tr.strftime("%Y-%m-%d")
+            current_hhmm = now_tr.strftime("%H:%M")
 
-            # Saat 09:00'da ve bugün henüz gönderilmediyse
-            if now_tr.hour == 9 and now_tr.minute == 0 and last_sent_day != current_day:
-                subscribers = get_daily_report_subscribers()
-                if subscribers:
+            if current_hhmm != last_sent_minute:
+                due_users = get_due_daily_report_users(current_hhmm)
+                if due_users:
                     report_text = generate_daily_report_text()
-                    log(f"📢 Otomatik Günlük Rapor {len(subscribers)} kullanıcıya iletiliyor...")
-                    for sub in subscribers:
-                        send_msg(report_text, sub["chat_id"])
-                    last_sent_day = current_day
+                    log(f"📢 Saat {current_hhmm} bülteni {len(due_users)} kullanıcıya iletiliyor...")
+                    for u in due_users:
+                        send_msg(report_text, u["chat_id"])
+                last_sent_minute = current_hhmm
 
         except Exception as e:
             log(f"Zamanlayıcı Hatası: {e}")
 
-        time.sleep(30)
+        time.sleep(25)
 
 # ----------------------------------------------------
 # 4. TELEGRAM MESAJ GÖNDERİCİ
@@ -351,7 +352,28 @@ def handle_cmd(text, sender_id, sender_name=""):
     raw = str(text).strip()
     c = raw.lower().replace("/", "").replace("$", "").replace("usd", "").replace("usdt", "").strip()
 
-    # Günlük / Anlık Rapor İsteme Komutları
+    # Rapor Saati Ayarlama (Örn: "saat 08:30" veya "08:00")
+    time_match = re.search(r'(?:saat\s*)?([01]?[0-9]|2[0-3])[:.]([0-5][0-9])', c)
+    if time_match:
+        hh = f"{int(time_match.group(1)):02d}"
+        mm = f"{int(time_match.group(2)):02d}"
+        new_time = f"{hh}:{mm}"
+        update_user_settings(sender_id_str, {"report_time": new_time, "daily_report": True})
+        send_msg(f"⏰ <b>Günlük Bülten Saatiniz Ayarlandı:</b> <code>{new_time} (TSİ)</code>\nHer gün bu saatte 24 saatlik balina özeti otomatik cebinize gelecek!", sender_id_str)
+        return
+
+    # Günlük Raporu Aç / Kapat
+    if c in ["rapor ac", "rapor aç", "bulten ac", "bülten aç"]:
+        update_user_settings(sender_id_str, {"daily_report": True})
+        send_msg(f"✅ <b>Günlük bülten aktif edildi!</b>\nGönderim saati: <code>{user.get('report_time', '09:00')}</code>\nDeğiştirmek için: <code>saat 08:30</code>", sender_id_str)
+        return
+
+    if c in ["rapor kapat", "rapor iptal", "bulten kapat", "bülten kapat"]:
+        update_user_settings(sender_id_str, {"daily_report": False})
+        send_msg("🛑 <b>Otomatik günlük bülten kapatıldı.</b>\nİstediğiniz an <code>rapor</code> yazarak anlık özet alabilirsiniz.", sender_id_str)
+        return
+
+    # Anlık Rapor İsteme
     if c in ["rapor", "report", "bulten", "bülten", "ozet", "özet", "digest"]:
         send_msg("⏳ 24 saatlik balina verileri hesaplanıyor...", sender_id_str)
         report_text = generate_daily_report_text()
@@ -360,22 +382,25 @@ def handle_cmd(text, sender_id, sender_name=""):
 
     if c in ["menu", "menü", "panel", "durum", "status", "start"]:
         st = "🟢 AKTİF" if user["enabled"] else "🔴 KAPALI"
-        rep_st = "🟢 AÇIK" if user.get("daily_report", True) else "🔴 KAPALI"
+        rep_st = f"🟢 AÇIK ({user.get('report_time', '09:00')} TSİ)" if user.get("daily_report", True) else "🔴 KAPALI"
         send_msg(
             f"📊 <b>WHALEMETRIC KİŞİSEL PANELİNİZ</b>\n\n"
             f"• <b>Üye:</b> {user.get('first_name') or 'Trader'}\n"
-            f"• <b>Radar Durumu:</b> {st}\n"
-            f"• <b>Günlük Rapor (09:00):</b> {rep_st}\n"
-            f"• <b>Özel Eşik Değeriniz:</b> <code>${user['threshold']:,.0f}</code>\n"
+            f"• <b>Canlı Radar:</b> {st}\n"
+            f"• <b>Günlük Bülten Saati:</b> {rep_st}\n"
+            f"• <b>Balina Eşiğiniz:</b> <code>${user['threshold']:,.0f}</code>\n"
             f"• <b>Kullanıcı ID:</b> <code>{sender_id_str}</code>\n\n"
-            f"💡 <i>Anlık 24s özet almak için:</i> <code>rapor</code>",
+            f"⚙️ <b>Hızlı Komutlar:</b>\n"
+            f"• <code>saat 08:30</code> → Bülten saatini ayarlar\n"
+            f"• <code>rapor</code> → Anlık 24s özet bülteni getirir\n"
+            f"• <code>50k</code> → Balina eşiğinizi $50,000 yapar",
             sender_id_str
         )
         return
 
     if c in ["dur", "stop", "durdur", "kapat", "off"]:
         update_user_settings(sender_id_str, {"enabled": False})
-        send_msg("🛑 <b>Bildirimleriniz durduruldu!</b>\nTekrar açmak için: <code>baslat</code>", sender_id_str)
+        send_msg("🛑 <b>Canlı bildirimleriniz durduruldu!</b>\nTekrar açmak için: <code>baslat</code>", sender_id_str)
         return
 
     if c in ["baslat", "start", "ac", "aç", "on"]:
@@ -400,7 +425,7 @@ def handle_cmd(text, sender_id, sender_name=""):
         send_msg(f"🎯 <b>Size Özel Eşik Güncellendi:</b> ${final_val:,.0f}", sender_id_str)
         return
 
-    send_msg("❓ <b>Komut anlaşılamadı.</b>\nÖrnekler: <code>rapor</code>, <code>10k</code>, <code>50k</code>, <code>durdur</code>, <code>baslat</code>", sender_id_str)
+    send_msg("❓ <b>Komut anlaşılamadı.</b>\nÖrnekler: <code>saat 08:00</code>, <code>rapor</code>, <code>50k</code>, <code>durdur</code>, <code>baslat</code>", sender_id_str)
 
 # ----------------------------------------------------
 # 6. REST API (KİMLİK DOĞRULAMA & BULUT PROFİL)
