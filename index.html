@@ -29,7 +29,6 @@
     <style>
     @import url('https://fonts.googleapis.com/css2?family=Montserrat:ital,wght@0,300;0,400;0,600;0,700;1,400&display=swap');
 
-    /* Sayfadaki HER ŞEYİ (input, button, p, h1 vb.) Montserrat yapmaya zorlar */
     *, *::before, *::after, body, input, button, select, textarea {
         font-family: 'Montserrat', sans-serif !important;
     }
@@ -79,7 +78,7 @@
             </div>
 
             <!-- Tema Seçici -->
-            <select id="themeSelect" onchange="changeTheme(this.value)" class="px-2 py-1 bg-darkBg border border-darkBorder rounded text-xs text-slate-300 focus:outline-none font-mono">
+            <select id="themeSelect" onchange="onThemeChange(this.value)" class="px-2 py-1 bg-darkBg border border-darkBorder rounded text-xs text-slate-300 focus:outline-none font-mono">
                 <option value="theme-navy">🌑 Cyber Navy</option>
                 <option value="theme-cyber">⚡ Matrix Green</option>
                 <option value="theme-slate">🏛️ Bloomberg Slate</option>
@@ -101,11 +100,12 @@
                 🔊 <span>Bip: Kapalı</span>
             </button>
 
-            <div class="flex items-center space-x-3">
-  
-           
-</div>
-
+            <!-- TELEGRAM GİRİŞ / PROFİL BUTONU -->
+            <div id="authContainer" class="flex items-center">
+                <button onclick="openLoginModal()" class="px-3 py-1 bg-accentBlue hover:bg-blue-600 text-white font-bold rounded text-xs transition flex items-center gap-1.5 shadow-lg shadow-blue-500/20">
+                    <span>✈️</span> Telegram ile Bağlan
+                </button>
+            </div>
 
             <!-- CSV Dışa Aktar Butonu -->
             <button onclick="exportToCSV()" class="px-2.5 py-1 bg-accentBlue/10 hover:bg-accentBlue/20 border border-accentBlue/30 rounded text-xs text-accentBlue font-semibold transition flex items-center gap-1">
@@ -302,22 +302,6 @@
                 </label>
             </div>
             
-            <!-- Bot Ayarları Formu -->
-            <div class="grid grid-cols-1 md:grid-cols-2 gap-3 text-xs font-mono">
-                <div>
-                    <label class="block text-slate-400 mb-1">Telegram Bot Token:</label>
-                    <input type="text" id="tgToken" placeholder="örn: 8623857901:AAH2..." class="w-full bg-darkBg border border-darkBorder rounded px-2.5 py-1.5 text-white focus:outline-none focus:border-accentBlue">
-                </div>
-                <div>
-                    <label class="block text-slate-400 mb-1">Telegram Chat ID:</label>
-                    <input type="text" id="tgChatId" placeholder="örn: 987654321" class="w-full bg-darkBg border border-darkBorder rounded px-2.5 py-1.5 text-white focus:outline-none focus:border-accentBlue">
-                </div>
-                <div class="md:col-span-2">
-                    <label class="block text-slate-400 mb-1">Discord Webhook URL (Opsiyonel):</label>
-                    <input type="text" id="discordWebhook" placeholder="https://discord.com/api/webhooks/..." class="w-full bg-darkBg border border-darkBorder rounded px-2.5 py-1.5 text-white focus:outline-none focus:border-accentBlue">
-                </div>
-            </div>
-
             <!-- Gelişmiş Filtreler -->
             <div class="p-3 bg-darkBg/60 border border-darkBorder rounded-lg space-y-2.5 text-xs font-mono">
                 <div class="text-[11px] font-bold text-accentBlue uppercase">Gelişmiş Alarm Filtreleri</div>
@@ -325,42 +309,76 @@
                 <div class="grid grid-cols-2 gap-2">
                     <div>
                         <label class="block text-slate-400 text-[10px] mb-1">Minimum Alarm Eşiği ($):</label>
-                        <input type="number" id="botThreshold" value="250000" class="w-full bg-darkCard border border-darkBorder rounded px-2 py-1 text-accentBlue font-bold focus:outline-none">
+                        <input type="number" id="modalThresholdInput" value="50000" class="w-full bg-darkCard border border-darkBorder rounded px-2 py-1 text-accentBlue font-bold focus:outline-none">
                     </div>
                     <div>
                         <label class="block text-slate-400 text-[10px] mb-1">İşlem Yönü:</label>
-                        <select id="botSideFilter" class="w-full bg-darkCard border border-darkBorder rounded px-2 py-1 text-slate-200 focus:outline-none">
+                        <select id="modalSideFilter" class="w-full bg-darkCard border border-darkBorder rounded px-2 py-1 text-slate-200 focus:outline-none">
                             <option value="ALL">🟢 Alışlar + 🔴 Satışlar</option>
                             <option value="BUY_ONLY">Sadece Alışlar (🟢)</option>
                             <option value="SELL_ONLY">Sadece Satışlar (🔴)</option>
                         </select>
                     </div>
                 </div>
-
-                <div class="grid grid-cols-2 gap-2 pt-1">
-                    <div>
-                        <label class="block text-slate-400 text-[10px] mb-1">Coin Kapsamı:</label>
-                        <select id="botScope" class="w-full bg-darkCard border border-darkBorder rounded px-2 py-1 text-slate-200 focus:outline-none">
-                            <option value="ALL">Tüm 15 Parite</option>
-                            <option value="ACTIVE_ONLY">Sadece Seçili Parite</option>
-                        </select>
-                    </div>
-                    <div class="flex items-center gap-2 pt-3">
-                        <input type="checkbox" id="botLiqAlerts" class="rounded bg-darkCard border-darkBorder text-accentBlue focus:ring-0">
-                        <label for="botLiqAlerts" class="text-[11px] text-slate-300 cursor-pointer">💥 Likidasyonları Bildir</label>
-                    </div>
-                </div>
             </div>
 
             <!-- Alt Butonlar -->
-            <div class="flex justify-between items-center pt-2 border-t border-darkBorder">
-                <button onclick="sendInteractiveMenu()" class="px-3 py-1.5 bg-darkBg hover:bg-darkBorder border border-darkBorder rounded text-xs text-slate-300 transition">📱 Telefona Kumanda Gönder</button>
-                <button onclick="saveBotSettings()" class="px-4 py-1.5 bg-accentBlue hover:bg-blue-600 text-white font-bold rounded text-xs transition shadow-lg shadow-blue-500/20">Kaydet</button>
+            <div class="flex justify-end items-center pt-2 border-t border-darkBorder gap-2">
+                <button onclick="toggleBotModal()" class="px-3 py-1.5 bg-darkBg hover:bg-darkBorder border border-darkBorder rounded text-xs text-slate-300">Kapat</button>
+                <button onclick="saveModalSettings()" class="px-4 py-1.5 bg-accentBlue hover:bg-blue-600 text-white font-bold rounded text-xs shadow-lg shadow-blue-500/20">Kaydet</button>
             </div>
         </div>
     </div>
 
-    <!-- JAVASCRIPT MOTORU -->
+    <!-- 2 AŞAMALI GÜVENLİ TELEGRAM GİRİŞ MODALI (OTP) -->
+    <div id="loginModal" class="fixed inset-0 bg-black/70 backdrop-blur-sm z-50 hidden items-center justify-center p-4">
+        <div class="bg-darkCard border border-darkBorder w-full max-w-sm rounded-xl p-5 shadow-2xl space-y-4">
+            <div class="flex justify-between items-center border-b border-darkBorder pb-2">
+                <h3 class="font-bold text-white text-sm flex items-center gap-2">🔐 <span>Telegram Güvenli Giriş</span></h3>
+                <button onclick="closeLoginModal()" class="text-slate-400 hover:text-white font-bold text-base">✕</button>
+            </div>
+
+            <!-- Adım 1: Chat ID Girişi -->
+            <div id="otpStep1" class="space-y-3 font-mono text-xs">
+                <p class="text-[11px] text-slate-300 font-sans">
+                    Telegram Chat ID'nizi girin. Botumuz hesabınıza 6 haneli tek kullanımlık bir şifre gönderecektir:
+                </p>
+                <div>
+                    <label class="block text-slate-400 text-[10px] mb-1">Telegram Chat ID:</label>
+                    <input type="text" id="loginChatId" placeholder="Örn: 1140305780" class="w-full bg-darkBg border border-darkBorder rounded px-3 py-2 text-white focus:outline-none focus:border-accentBlue">
+                </div>
+                <div>
+                    <label class="block text-slate-400 text-[10px] mb-1">İsminiz (Opsiyonel):</label>
+                    <input type="text" id="loginName" placeholder="Örn: Kadir" class="w-full bg-darkBg border border-darkBorder rounded px-3 py-2 text-white focus:outline-none focus:border-accentBlue">
+                </div>
+                <div class="pt-2 flex justify-end gap-2">
+                    <button onclick="closeLoginModal()" class="px-3 py-1.5 bg-darkBg hover:bg-darkBorder border border-darkBorder rounded text-xs text-slate-300">İptal</button>
+                    <button id="sendCodeBtn" onclick="requestOtpCode()" class="px-4 py-1.5 bg-accentBlue hover:bg-blue-600 text-white font-bold rounded text-xs flex items-center gap-1.5">
+                        <span>📲 Doğrulama Kodu Gönder</span>
+                    </button>
+                </div>
+            </div>
+
+            <!-- Adım 2: 6 Haneli Kod Onayı -->
+            <div id="otpStep2" class="space-y-3 font-mono text-xs hidden">
+                <p class="text-[11px] text-emerald-400 font-sans">
+                    ✅ Kod Telegram hesabınıza iletildi! Lütfen 6 haneli şifreyi girin:
+                </p>
+                <div>
+                    <label class="block text-slate-400 text-[10px] mb-1">6 Haneli Doğrulama Kodu:</label>
+                    <input type="text" id="loginOtpCode" maxlength="6" placeholder="• • • • • •" class="w-full bg-darkBg border border-darkBorder rounded px-3 py-2.5 text-center text-lg font-bold text-accentBlue tracking-widest focus:outline-none focus:border-accentBlue">
+                </div>
+                <div class="pt-2 flex justify-between items-center">
+                    <button onclick="backToStep1()" class="text-[11px] text-slate-400 hover:underline">← ID Değiştir</button>
+                    <button onclick="verifyOtpCode()" class="px-4 py-1.5 bg-emerald-500 hover:bg-emerald-600 text-white font-bold rounded text-xs shadow-lg shadow-emerald-500/20">
+                        Doğrula & Giriş Yap
+                    </button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- JAVASCRIPT MOTORU & MERKEZİ BULUT PROFİL SENKRONİZASYONU -->
     <script>
         const COINS = [
             { symbol: "BTCUSDT", name: "Bitcoin", icon: "₿" },
@@ -382,43 +400,81 @@
 
         let activeSymbol = "BTCUSDT";
         let userThreshold = 50000;
+        let isBotEnabled = true;
         let audioEnabled = false;
         let voiceEnabled = false;
+        let currentSideFilter = 'ALL';
         let audioCtx = null;
-        let lastBotAlertTime = 0;
-        let lastTelegramUpdateId = 0; // Gelen komutları dinlemek için
+        let isSyncingLocal = false; // Gel-git (flicker) engelleyici
+        let currentAuthUser = JSON.parse(localStorage.getItem('wm_user') || 'null');
 
-        // Gelişmiş Bot Yapılandırması
-        let botConfig = {
-            enabled: localStorage.getItem('botEnabled') !== 'false',
-            tgToken: localStorage.getItem('tgToken') || '8623857901:AAH2mMnEC4qMjG3fdpimhZyA4bFDgTqvugM',
-            tgChatId: localStorage.getItem('tgChatId') || '',
-            discordWebhook: localStorage.getItem('discordWebhook') || '',
-            botThreshold: parseFloat(localStorage.getItem('botThreshold')) || 250000,
-            sideFilter: localStorage.getItem('botSideFilter') || 'ALL',
-            scope: localStorage.getItem('botScope') || 'ALL',
-            liqAlerts: localStorage.getItem('botLiqAlerts') !== 'false'
-        };
+        function getActiveChatId() {
+            if (!currentAuthUser) return null;
+            return currentAuthUser.chat_id || currentAuthUser.id || null;
+        }
 
-        // Veri Deposu
         const rawTradeStore = {};
         COINS.forEach(c => { rawTradeStore[c.symbol] = []; });
 
-        // Mum Çubukları & Markers
         let chartInstance = null;
         let candleSeries = null;
         let currentCandle = null;
         let chartMarkers = [];
 
-        // Bot Durum Rozetini Güncelle
+        // Kullanıcı Profilini ve Ayarlarını UI'a Basar
+        function applyUserProfile(user) {
+            if (!user) return;
+
+            if (typeof user.threshold !== 'undefined') {
+                userThreshold = Number(user.threshold);
+                syncThresholdUI();
+                recalculateAndRender();
+            }
+
+            if (typeof user.enabled !== 'undefined') {
+                isBotEnabled = Boolean(user.enabled);
+            }
+
+            if (user.side_filter) {
+                currentSideFilter = user.side_filter;
+            }
+
+            if (user.theme) {
+                changeTheme(user.theme, false);
+                const tSel = document.getElementById('themeSelect');
+                if (tSel) tSel.value = user.theme;
+            }
+
+            if (typeof user.voice_enabled !== 'undefined') {
+                voiceEnabled = Boolean(user.voice_enabled);
+                const vText = document.getElementById('voiceText');
+                const vBtn = document.getElementById('voiceToggle');
+                if (vText && vBtn) {
+                    vText.innerText = voiceEnabled ? 'Sesli Anons: Açık' : 'Sesli Anons: Kapalı';
+                    vBtn.className = voiceEnabled ? 'px-2.5 py-1 bg-accentBlue text-white rounded text-xs transition flex items-center gap-1' : 'px-2.5 py-1 bg-darkBg hover:bg-darkBorder border border-darkBorder rounded text-xs text-slate-300 transition flex items-center gap-1';
+                }
+            }
+
+            if (typeof user.sound_enabled !== 'undefined') {
+                audioEnabled = Boolean(user.sound_enabled);
+                const sBtn = document.getElementById('soundToggle');
+                if (sBtn) {
+                    sBtn.innerHTML = audioEnabled ? '🔊 <span>Bip: Açık</span>' : '🔇 <span>Bip: Kapalı</span>';
+                    sBtn.className = audioEnabled ? 'px-2.5 py-1 bg-accentBlue text-white rounded text-xs transition flex items-center gap-1' : 'px-2.5 py-1 bg-darkBg hover:bg-darkBorder border border-darkBorder rounded text-xs text-slate-300 transition flex items-center gap-1';
+                }
+            }
+
+            syncBotBadge();
+        }
+
         function syncBotBadge() {
             const led = document.getElementById('botLed');
             const text = document.getElementById('botStatusText');
             const btn = document.getElementById('botStatusBtn');
 
-            if (botConfig.enabled && botConfig.tgChatId) {
+            if (isBotEnabled && currentAuthUser) {
                 led.className = "w-2 h-2 rounded-full bg-emerald-400 animate-ping";
-                text.innerText = `Bot: Aktif ($${(botConfig.botThreshold/1000)}k+)`;
+                text.innerText = `Bot: Aktif ($${(userThreshold/1000)}k)`;
                 btn.className = "px-2.5 py-1 bg-emerald-500/10 hover:bg-emerald-500/20 border border-emerald-500/30 rounded text-xs text-emerald-400 font-semibold transition flex items-center gap-1.5";
             } else {
                 led.className = "w-2 h-2 rounded-full bg-slate-500";
@@ -427,26 +483,6 @@
             }
         }
 
-        function onBotToggleChange(checked) {
-            botConfig.enabled = checked;
-            localStorage.setItem('botEnabled', checked);
-            syncBotBadge();
-        }
-
-       
-       // Telefondan Tıklanabilir İnteraktif Kumanda Gönder
-        async function sendInteractiveMenu() {
-            sendBotCommand("menu");
-            alert("📱 Telefonunuza interaktif kumanda butonları gönderildi!");
-        }
-
-       
-        
-        
-
-        // ==========================================
-        // DİĞER ARAYÜZ VE CHART MOTORLARI
-        // ==========================================
         function initTradingViewChart() {
             try {
                 if (typeof LightweightCharts === 'undefined') return;
@@ -542,6 +578,20 @@
             } catch(e) {}
         }
 
+        // TEMA YÖNETİMİ & BULUTA KAYIT
+        function onThemeChange(themeName) {
+            changeTheme(themeName, true);
+        }
+
+        function changeTheme(themeName, persist = true) {
+            document.documentElement.className = `dark ${themeName}`;
+            localStorage.setItem('whaleTheme', themeName);
+            if (persist && currentAuthUser) {
+                saveSettingsToCloud({ theme: themeName });
+            }
+        }
+
+        // SES VE ANONSLARI BULUTA KAYIT
         function toggleVoice() {
             voiceEnabled = !voiceEnabled;
             const btn = document.getElementById('voiceToggle');
@@ -554,6 +604,16 @@
                 btn.className = 'px-2.5 py-1 bg-darkBg hover:bg-darkBorder border border-darkBorder rounded text-xs text-slate-300 transition flex items-center gap-1';
                 text.innerText = 'Sesli Anons: Kapalı';
             }
+            if (currentAuthUser) saveSettingsToCloud({ voice_enabled: voiceEnabled });
+        }
+
+        function toggleAudio() {
+            audioEnabled = !audioEnabled;
+            if (audioEnabled && !audioCtx) audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+            const btn = document.getElementById('soundToggle');
+            btn.innerHTML = audioEnabled ? '🔊 <span>Bip: Açık</span>' : '🔇 <span>Bip: Kapalı</span>';
+            btn.className = audioEnabled ? 'px-2.5 py-1 bg-accentBlue text-white rounded text-xs transition flex items-center gap-1' : 'px-2.5 py-1 bg-darkBg hover:bg-darkBorder border border-darkBorder rounded text-xs text-slate-300 transition flex items-center gap-1';
+            if (currentAuthUser) saveSettingsToCloud({ sound_enabled: audioEnabled });
         }
 
         function speakAnnouncement(text) {
@@ -567,13 +627,20 @@
             } catch(e) {}
         }
 
-        function changeTheme(themeName) {
-            document.documentElement.className = `dark ${themeName}`;
-            localStorage.setItem('whaleTheme', themeName);
+        function playSound(freq, duration = 0.2) {
+            if (!audioEnabled || !audioCtx) return;
+            try {
+                const osc = audioCtx.createOscillator();
+                const gain = audioCtx.createGain();
+                osc.connect(gain);
+                gain.connect(audioCtx.destination);
+                osc.frequency.value = freq;
+                gain.gain.setValueAtTime(0.08, audioCtx.currentTime);
+                gain.gain.exponentialRampToValueAtTime(0.001, audioCtx.currentTime + duration);
+                osc.start();
+                osc.stop(audioCtx.currentTime + duration);
+            } catch(e) {}
         }
-        const savedTheme = localStorage.getItem('whaleTheme') || 'theme-navy';
-        document.getElementById('themeSelect').value = savedTheme;
-        changeTheme(savedTheme);
 
         function renderSidebar() {
             const list = document.getElementById('coinList');
@@ -618,38 +685,77 @@
             recalculateAndRender();
         }
 
-        // BOTA VE TELEGRAM'A DEĞER GÖNDEREN FONKSİYON
-        async function sendThresholdToBackend(val) {
+        // ==========================================
+        // BULUT AYAR GÖNDERME & SENKRONİZASYON
+        // ==========================================
+        async function saveSettingsToCloud(settingsObj) {
+            const cid = getActiveChatId();
+            if (!cid) return;
             try {
-                await fetch('http://localhost:10000/api/command', {
+                await fetch('http://localhost:10000/api/user/save-settings', {
                     method: 'POST',
                     headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify({ command: String(val) })
+                    body: JSON.stringify({ chat_id: String(cid), settings: settingsObj })
                 });
             } catch(e) {}
         }
 
-        function adjustThreshold(step) {
-            userThreshold = Math.max(1000, userThreshold + step);
+        async function sendThresholdToBackend(val) {
+            const cid = getActiveChatId();
+            if (!cid) {
+                alert("🔒 Telegram bildirim eşiğini değiştirmek için önce giriş yapmalısınız.");
+                openLoginModal();
+                return;
+            }
+
+            const numVal = Number(val);
+            userThreshold = numVal;
+            isSyncingLocal = true;
+
             syncThresholdUI();
             recalculateAndRender();
-            sendThresholdToBackend(userThreshold);
+            syncBotBadge();
+
+            try {
+                const res = await fetch('http://localhost:10000/api/command', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ command: String(numVal), chat_id: String(cid) })
+                });
+
+                if (res.status === 403) {
+                    alert("⚠️ Oturumunuz geçersiz. Lütfen tekrar giriş yapın.");
+                    logoutTelegram();
+                    return;
+                }
+
+                const data = await res.json();
+                if (data.ok && typeof data.threshold !== 'undefined') {
+                    userThreshold = Number(data.threshold);
+                    syncThresholdUI();
+                    recalculateAndRender();
+                    syncBotBadge();
+                }
+            } catch(e) {
+                console.error("Eşik gönderim hatası:", e);
+            } finally {
+                setTimeout(() => { isSyncingLocal = false; }, 2500);
+            }
+        }
+
+        function adjustThreshold(step) {
+            const newVal = Math.max(1000, userThreshold + step);
+            sendThresholdToBackend(newVal);
         }
 
         function setQuickThreshold(val) {
-            userThreshold = val;
-            syncThresholdUI();
-            recalculateAndRender();
-            sendThresholdToBackend(userThreshold);
+            sendThresholdToBackend(val);
         }
 
         function onManualThresholdInput(rawVal) {
             const cleanNum = parseFloat(rawVal.replace(/[^0-9.]/g, ''));
             if (!isNaN(cleanNum) && cleanNum >= 1000) {
-                userThreshold = cleanNum;
-                syncThresholdUI();
-                recalculateAndRender();
-                sendThresholdToBackend(userThreshold);
+                sendThresholdToBackend(cleanNum);
             }
         }
 
@@ -665,6 +771,41 @@
                     btn.className = "threshold-pill py-0.5 bg-darkBg hover:bg-darkBorder border border-darkBorder text-[10px] font-mono text-slate-300 rounded";
                 }
             });
+        }
+
+        // BOT MODAL YÖNETİMİ
+        function toggleBotModal() {
+            const modal = document.getElementById('botModal');
+            modal.classList.toggle('hidden');
+            document.getElementById('botEnabledToggle').checked = isBotEnabled;
+            document.getElementById('modalThresholdInput').value = userThreshold;
+            document.getElementById('modalSideFilter').value = currentSideFilter;
+        }
+
+        function onBotToggleChange(checked) {
+            isBotEnabled = checked;
+            syncBotBadge();
+            if (currentAuthUser) {
+                saveSettingsToCloud({ enabled: checked });
+            }
+        }
+
+       function saveModalSettings() {
+            if (!currentAuthUser) {
+                alert("🔒 Bu ayarları değiştirmek için önce giriş yapmalısınız.");
+                openLoginModal();
+                return;
+            }
+
+            const tVal = parseFloat(document.getElementById('modalThresholdInput').value) || 50000;
+            const sVal = document.getElementById('modalSideFilter').value;
+            currentSideFilter = sVal;
+            
+            sendThresholdToBackend(tVal);
+            saveSettingsToCloud({ side_filter: sVal });
+            
+            toggleBotModal();
+            alert("✅ Tercihleriniz profilinize kaydedildi!");
         }
 
         function renderHeatmap(trades) {
@@ -747,85 +888,6 @@
             renderHeatmap(filtered);
         }
 
-        function toggleAudio() {
-            audioEnabled = !audioEnabled;
-            if (audioEnabled && !audioCtx) audioCtx = new (window.AudioContext || window.webkitAudioContext)();
-            const btn = document.getElementById('soundToggle');
-            btn.innerHTML = audioEnabled ? '🔊 <span>Bip: Açık</span>' : '🔇 <span>Bip: Kapalı</span>';
-            btn.className = audioEnabled ? 'px-2.5 py-1 bg-accentBlue text-white rounded text-xs transition flex items-center gap-1' : 'px-2.5 py-1 bg-darkBg hover:bg-darkBorder border border-darkBorder rounded text-xs text-slate-300 transition flex items-center gap-1';
-        }
-
-        function playSound(freq, duration = 0.2) {
-            if (!audioEnabled || !audioCtx) return;
-            try {
-                const osc = audioCtx.createOscillator();
-                const gain = audioCtx.createGain();
-                osc.connect(gain);
-                gain.connect(audioCtx.destination);
-                osc.frequency.value = freq;
-                gain.gain.setValueAtTime(0.08, audioCtx.currentTime);
-                gain.gain.exponentialRampToValueAtTime(0.001, audioCtx.currentTime + duration);
-                osc.start();
-                osc.stop(audioCtx.currentTime + duration);
-            } catch(e) {}
-        }
-
-        function toggleBotModal() {
-            const modal = document.getElementById('botModal');
-            modal.classList.toggle('hidden');
-            
-            document.getElementById('botEnabledToggle').checked = botConfig.enabled;
-            document.getElementById('tgToken').value = botConfig.tgToken;
-            document.getElementById('tgChatId').value = botConfig.tgChatId;
-            document.getElementById('discordWebhook').value = botConfig.discordWebhook;
-            document.getElementById('botThreshold').value = botConfig.botThreshold;
-            document.getElementById('botSideFilter').value = botConfig.sideFilter;
-            document.getElementById('botScope').value = botConfig.scope;
-            document.getElementById('botLiqAlerts').checked = botConfig.liqAlerts;
-        }
-
-        function saveBotSettings() {
-            botConfig.enabled = document.getElementById('botEnabledToggle').checked;
-            botConfig.tgToken = document.getElementById('tgToken').value.trim();
-            botConfig.tgChatId = document.getElementById('tgChatId').value.trim();
-            botConfig.discordWebhook = document.getElementById('discordWebhook').value.trim();
-            botConfig.botThreshold = parseFloat(document.getElementById('botThreshold').value) || 250000;
-            botConfig.sideFilter = document.getElementById('botSideFilter').value;
-            botConfig.scope = document.getElementById('botScope').value;
-            botConfig.liqAlerts = document.getElementById('botLiqAlerts').checked;
-
-            localStorage.setItem('botEnabled', botConfig.enabled);
-            localStorage.setItem('tgToken', botConfig.tgToken);
-            localStorage.setItem('tgChatId', botConfig.tgChatId);
-            localStorage.setItem('discordWebhook', botConfig.discordWebhook);
-            localStorage.setItem('botThreshold', botConfig.botThreshold);
-            localStorage.setItem('botSideFilter', botConfig.sideFilter);
-            localStorage.setItem('botScope', botConfig.scope);
-            localStorage.setItem('botLiqAlerts', botConfig.liqAlerts);
-
-            syncBotBadge();
-            alert("✅ Bot ayarları kaydedildi!");
-            toggleBotModal();
-        }
-
-        async function triggerBotAlert(message) {
-            if (!botConfig.enabled) return;
-
-            const now = Date.now();
-            if (now - lastBotAlertTime < 2000) return;
-            lastBotAlertTime = now;
-
-            if (botConfig.discordWebhook) {
-                try {
-                    await fetch(botConfig.discordWebhook, {
-                        method: 'POST',
-                        headers: { 'Content-Type': 'application/json' },
-                        body: JSON.stringify({ content: message })
-                    });
-                } catch(e) {}
-            }
-        }
-
         function renderTableRow(whale, prepend = true) {
             const tbody = document.getElementById('whaleTableBody');
             const emptyRow = document.getElementById('emptyRow');
@@ -879,11 +941,6 @@
 
             if (liq.total_usd >= 50000) {
                 speakAnnouncement(`${liq.symbol.replace('USDT', '')} ${isShortLiq ? 'Short' : 'Long'} Liquidation`);
-            }
-
-            if (botConfig.enabled && botConfig.liqAlerts && liq.total_usd >= 100000) {
-                const liqMsg = `💥 <b>DEV LİKİDASYON ALARMI!</b>\n\n<b>Parite:</b> ${liq.symbol}\n<b>Patlayan Pozisyon:</b> ${posType}\n<b>Tutar:</b> $${liq.total_usd.toLocaleString()}\n<b>Fiyat:</b> $${liq.price.toLocaleString()}`;
-                triggerBotAlert(liqMsg);
             }
         }
 
@@ -969,18 +1026,6 @@
 
                         recalculateAndRender();
                     }
-
-                    if (botConfig.enabled && whale.total_usd >= botConfig.botThreshold) {
-                        const passScope = (botConfig.scope === 'ALL') || (whale.symbol === activeSymbol);
-                        const passSide = (botConfig.sideFilter === 'ALL') || 
-                                         (botConfig.sideFilter === 'BUY_ONLY' && whale.type === 'BUY') ||
-                                         (botConfig.sideFilter === 'SELL_ONLY' && whale.type === 'SELL');
-
-                        if (passScope && passSide) {
-                            const botMsg = `🐋 <b>MEGA BALİNA ALARMI!</b>\n\n<b>Parite:</b> ${whale.symbol}\n<b>Tür:</b> ${whale.type === 'BUY' ? '🟢 ALIM' : '🔴 SATIM'}\n<b>Tutar:</b> $${whale.total_usd.toLocaleString()}\n<b>Fiyat:</b> $${whale.price.toLocaleString()}`;
-                            triggerBotAlert(botMsg);
-                        }
-                    }
                 };
 
                 fapiWs.onmessage = (event) => {
@@ -1022,110 +1067,192 @@
             } catch(e) {}
         }
 
-        // Başlatıcı
-        renderSidebar();
-        syncBotBadge();
-        initTradingViewChart();
-        initWebSocket();
+        // ==========================================
+        // TELEGRAM OTP GİRİŞ MODAL VE DOĞRULAMA
+        // ==========================================
+        function openLoginModal() {
+            const modal = document.getElementById('loginModal');
+            if (modal) {
+                modal.classList.remove('hidden');
+                modal.classList.add('flex');
+            }
+            backToStep1();
+        }
 
-        // CANLI TELEGRAM & BOT SENKRONİZASYONU
-        async function syncWithBackendBot() {
+        function closeLoginModal() {
+            const modal = document.getElementById('loginModal');
+            if (modal) {
+                modal.classList.add('hidden');
+                modal.classList.remove('flex');
+            }
+        }
+
+        function backToStep1() {
+            const s1 = document.getElementById('otpStep1');
+            const s2 = document.getElementById('otpStep2');
+            const otpInp = document.getElementById('loginOtpCode');
+            if (s1) s1.classList.remove('hidden');
+            if (s2) s2.classList.add('hidden');
+            if (otpInp) otpInp.value = '';
+        }
+
+        async function requestOtpCode() {
+            const chatIdInput = document.getElementById('loginChatId');
+            const nameInput = document.getElementById('loginName');
+            const btn = document.getElementById('sendCodeBtn');
+
+            const chatId = chatIdInput ? chatIdInput.value.trim() : '';
+            const name = (nameInput && nameInput.value.trim()) ? nameInput.value.trim() : 'Trader';
+
+            if (!chatId) {
+                alert("⚠️ Lütfen Telegram Chat ID numaranızı girin!");
+                return;
+            }
+
+            if (btn) {
+                btn.innerText = "⏳ Gönderiliyor...";
+                btn.disabled = true;
+            }
+
             try {
-                const res = await fetch('http://localhost:10000/');
+                const res = await fetch('http://localhost:10000/api/auth/send-code', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ id: chatId, first_name: name })
+                });
+
+                const data = await res.json();
+                if (data.ok) {
+                    const s1 = document.getElementById('otpStep1');
+                    const s2 = document.getElementById('otpStep2');
+                    if (s1) s1.classList.add('hidden');
+                    if (s2) s2.classList.remove('hidden');
+                    alert("📲 6 haneli kod Telegram botunuza gönderildi!");
+                } else {
+                    alert("❌ " + (data.msg || "Kod gönderilemedi!"));
+                }
+            } catch(e) {
+                console.error("OTP Hata:", e);
+                alert("❌ Bot sunucusuna ulaşılamadı!\nTerminalde 'python bot.py' çalışıyor mu kontrol edin.");
+            } finally {
+                if (btn) {
+                    btn.innerText = "📲 Doğrulama Kodu Gönder";
+                    btn.disabled = false;
+                }
+            }
+        }
+
+        async function verifyOtpCode() {
+            const chatIdInput = document.getElementById('loginChatId');
+            const codeInput = document.getElementById('loginOtpCode');
+
+            const chatId = chatIdInput ? chatIdInput.value.trim() : '';
+            const code = codeInput ? codeInput.value.trim() : '';
+
+            if (!code || code.length < 6) {
+                alert("⚠️ Lütfen 6 haneli kodu eksiksiz girin!");
+                return;
+            }
+
+            try {
+                const res = await fetch('http://localhost:10000/api/auth/verify-code', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ id: chatId, code: code })
+                });
+
+                const data = await res.json();
+                if (data.ok && data.user) {
+                    currentAuthUser = data.user;
+                    localStorage.setItem('wm_user', JSON.stringify(data.user));
+                    
+                    renderAuthUI();
+                    applyUserProfile(data.user);
+                    closeLoginModal();
+                    alert(`✅ Hoş geldin, ${data.user.first_name || 'Trader'}! Ayarlarınız yüklendi.`);
+                } else {
+                    alert("❌ " + (data.msg || "Doğrulama başarısız!"));
+                }
+            } catch(e) {
+                console.error("Doğrulama Hata:", e);
+                alert("❌ Sunucu bağlantı hatası oluştu!");
+            }
+        }
+
+        function renderAuthUI() {
+            const container = document.getElementById('authContainer');
+            if (!container) return;
+
+            if (currentAuthUser) {
+                container.innerHTML = `
+                    <div class="flex items-center gap-2 bg-darkBg border border-darkBorder px-2.5 py-1 rounded-lg">
+                        <span class="text-xs">👤</span>
+                        <span class="text-xs font-mono font-bold text-white">${currentAuthUser.first_name || 'Trader'}</span>
+                        <button onclick="logoutTelegram()" class="text-[10px] text-rose-400 hover:underline ml-1">Çıkış</button>
+                    </div>
+                `;
+            } else {
+                container.innerHTML = `
+                    <button onclick="openLoginModal()" class="px-3 py-1 bg-accentBlue hover:bg-blue-600 text-white font-bold rounded text-xs transition flex items-center gap-1.5 shadow-lg shadow-blue-500/20">
+                        <span>✈️</span> Telegram ile Bağlan
+                    </button>
+                `;
+            }
+        }
+
+        function logoutTelegram() {
+            localStorage.removeItem('wm_user');
+            currentAuthUser = null;
+            location.reload();
+        }
+
+        // CANLI TELEGRAM & BOT SENKRONİZASYONU (POLLING)
+        async function syncWithBackendBot() {
+            if (isSyncingLocal) return;
+
+            const cid = getActiveChatId();
+            if (!cid) return;
+
+            try {
+                const res = await fetch(`http://localhost:10000/?chat_id=${cid}`);
                 if (!res.ok) return;
                 const data = await res.json();
-                
-                if (typeof data.threshold !== 'undefined') {
-                    const tVal = Number(data.threshold);
-                    
-                    // 1. Terminal filtre eşiğini güncelle
-                    if (userThreshold !== tVal) {
-                        userThreshold = tVal;
+
+                if (data.status === 'ok' && data.user) {
+                    const u = data.user;
+                    if (userThreshold !== Number(u.threshold)) {
+                        userThreshold = Number(u.threshold);
                         syncThresholdUI();
                         recalculateAndRender();
                     }
-
-                    // 2. Üst bardaki "Bot: Aktif (100k)" yazısını anlık güncelle
-                    const led = document.getElementById('botLed');
-                    const text = document.getElementById('botStatusText');
-                    const btn = document.getElementById('botStatusBtn');
-                    
-                    if (text && led && btn) {
-                        const kText = tVal >= 1000 ? `${(tVal/1000)}k` : tVal;
-                        if (data.enabled) {
-                            led.className = "w-2 h-2 rounded-full bg-emerald-400 animate-ping";
-                            text.innerText = `Bot: Aktif ($${kText})`;
-                            btn.className = "px-2.5 py-1 bg-emerald-500/10 hover:bg-emerald-500/20 border border-emerald-500/30 rounded text-xs text-emerald-400 font-semibold transition flex items-center gap-1.5";
-                        } else {
-                            led.className = "w-2 h-2 rounded-full bg-slate-500";
-                            text.innerText = "Bot: Susturuldu";
-                            btn.className = "px-2.5 py-1 bg-darkBg hover:bg-darkBorder border border-darkBorder rounded text-xs text-slate-400 transition flex items-center gap-1.5";
-                        }
+                    if (isBotEnabled !== Boolean(u.enabled)) {
+                        isBotEnabled = Boolean(u.enabled);
                     }
+                    syncBotBadge();
                 }
             } catch(e) {}
         }
 
-        // Her 1.5 saniyede bir kontrol et
+        // BAŞLATICI
+        const initialTheme = localStorage.getItem('whaleTheme') || 'theme-navy';
+        changeTheme(initialTheme, false);
+        const tSel = document.getElementById('themeSelect');
+        if (tSel) tSel.value = initialTheme;
+
+        renderSidebar();
+        initTradingViewChart();
+        initWebSocket();
+        renderAuthUI();
+
+        if (currentAuthUser) {
+            applyUserProfile(currentAuthUser);
+        } else {
+            syncBotBadge();
+        }
+
+        // Canlı Polling
         syncWithBackendBot();
         setInterval(syncWithBackendBot, 1500);
     </script>
-
-   <script>
-        (function () {
-            const BOT_URL = 'http://localhost:10000';
-
-            function updateTerminalUI(data) {
-                if (!data || typeof data.threshold === 'undefined') return;
-
-                const thresholdVal = Number(data.threshold);
-
-                if (window.userThreshold !== thresholdVal) {
-                    window.userThreshold = thresholdVal;
-
-                    // 1. Ortadaki Eşik girdi kutusu
-                    const threshInput = document.getElementById('thresholdDisplay');
-                    if (threshInput) {
-                        threshInput.value = thresholdVal.toLocaleString('en-US');
-                    }
-
-                    // 2. Sağ üstteki mavi eşik etiketi
-                    const pillLabel = document.getElementById('activePillLabel');
-                    if (pillLabel) {
-                        pillLabel.innerText = `$${thresholdVal.toLocaleString('en-US')}`;
-                    }
-
-                    // 3. Hızlı seçim butonlarının renkleri
-                    document.querySelectorAll('.threshold-pill').forEach((btn) => {
-                        const val = parseFloat(btn.getAttribute('data-val'));
-                        if (val === thresholdVal) {
-                            btn.className = 'threshold-pill py-0.5 bg-accentBlue text-white font-bold border border-accentBlue text-[10px] font-mono rounded';
-                        } else {
-                            btn.className = 'threshold-pill py-0.5 bg-darkBg hover:bg-darkBorder border border-darkBorder text-[10px] font-mono text-slate-300 rounded';
-                        }
-                    });
-
-                    // 4. Tabloyu yeni eşiğe göre yeniden hesapla
-                    if (typeof recalculateAndRender === 'function') {
-                        recalculateAndRender();
-                    }
-                }
-            }
-
-            async function syncLoop() {
-                try {
-                    const res = await fetch(`${BOT_URL}/`);
-                    if (res.ok) {
-                        const data = await res.json();
-                        updateTerminalUI(data);
-                    }
-                } catch (e) {}
-            }
-
-            syncLoop();
-            setInterval(syncLoop, 1500);
-        })();
-    </script>
-
 </body>
 </html>
