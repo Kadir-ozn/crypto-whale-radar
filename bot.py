@@ -21,9 +21,19 @@ TELEGRAM_BOT_TOKEN = "8921763189:AAE3pCTrBLwUoKAqT25B8WqP6IKMTdCsQxU"
 DB_PATH = "radar_users.db"
 
 DEFAULT_COINS = [
+    # Majörler
     "BTCUSDT", "ETHUSDT", "SOLUSDT", "BNBUSDT", "XRPUSDT",
-    "AVAXUSDT", "LINKUSDT", "DOGEUSDT", "ADAUSDT", "SUIUSDT",
-    "NEARUSDT", "ARBUSDT", "OPUSDT", "PEPEUSDT", "SHIBUSDT"
+    
+    # Popüler L1 / L2 & Altyapı
+    "AVAXUSDT", "ADAUSDT", "SUIUSDT", "NEARUSDT", "APTUSDT",
+    "LINKUSDT", "DOTUSDT", "ARBUSDT", "OPUSDT", "MATICUSDT",
+    "FTMUSDT", "INJUSDT", "SEIUSDT", "TIAUSDT", "TONUSDT",
+    
+    # Yapay Zeka (AI) & Veri
+    "FETUSDT", "RENDERUSDT", "TAOUSDT", "WLDUSDT",
+    
+    # Meme Tokenlar
+    "DOGEUSDT", "SHIBUSDT", "PEPEUSDT", "WIFUSDT", "BONKUSDT", "FLOKIUSDT"
 ]
 
 telegram_outbox = queue.Queue()
