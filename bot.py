@@ -352,7 +352,7 @@ def handle_cmd(text, sender_id, sender_name=""):
     raw = str(text).strip()
     lower_text = raw.lower().strip()
 
-    # 1. SAAT AYARLAMA (Örn: "saat 15:28", "saat: 09:00", "/saat 23:00")
+    # 1. SAAT AYARLAMA
     if "saat" in lower_text or "time" in lower_text:
         time_match = re.search(r'([01]?[0-9]|2[0-3])[:.]([0-5][0-9])', lower_text)
         if time_match:
@@ -419,7 +419,7 @@ def handle_cmd(text, sender_id, sender_name=""):
         send_msg(f"▶️ <b>Radarınız Aktif!</b>\nEşiğiniz: <b>${user['threshold']:,.0f}</b>", sender_id_str)
         return
 
-    # 6. EŞİK DEĞERİ AYARLAMA (Örn: "50k", "100k", "esik 25000", "50000")
+    # 6. EŞİK DEĞERİ AYARLAMA
     c_clean = lower_text.replace("/", "").replace("$", "").replace("usd", "").replace("usdt", "").strip()
     clean_val = re.sub(r'^(?:esik|eşik|limit)\s*[:=]?\s*', '', c_clean).strip()
     match = re.match(r'^([0-9]+(?:[\.,][0-9]+)?)\s*([km])?$', clean_val)
@@ -439,17 +439,22 @@ def handle_cmd(text, sender_id, sender_name=""):
         return
 
     send_msg("❓ <b>Komut anlaşılamadı.</b>\nÖrnekler: <code>saat 09:00</code>, <code>rapor</code>, <code>50k</code>, <code>durdur</code>, <code>baslat</code>", sender_id_str)
+
 # ----------------------------------------------------
-# 6. REST API (KİMLİK DOĞRULAMA & BULUT PROFİL)
+# 6. REST API & HEALTH CHECK (RENDER & UPTIMEROBOT TAM UYUMLU)
 # ----------------------------------------------------
 class WebApiHandler(BaseHTTPRequestHandler):
     def _set_headers(self, status=200):
         self.send_response(status)
         self.send_header("Content-type", "application/json; charset=utf-8")
         self.send_header("Access-Control-Allow-Origin", "*")
-        self.send_header("Access-Control-Allow-Methods", "GET, POST, OPTIONS")
+        self.send_header("Access-Control-Allow-Methods", "GET, POST, HEAD, OPTIONS")
         self.send_header("Access-Control-Allow-Headers", "Content-Type")
         self.end_headers()
+
+    def do_HEAD(self):
+        # UptimeRobot ve Render Health Check için
+        self._set_headers(200)
 
     def do_OPTIONS(self):
         self._set_headers(200)
@@ -475,6 +480,7 @@ class WebApiHandler(BaseHTTPRequestHandler):
         self._set_headers(200)
         self.wfile.write(json.dumps({
             "status": "ok",
+            "message": "WhaleMetric Backend Online",
             "authenticated": False,
             "threshold": 50000.0,
             "enabled": True
@@ -487,7 +493,6 @@ class WebApiHandler(BaseHTTPRequestHandler):
             data = json.loads(body.decode("utf-8"))
             now = time.time()
 
-            # 1. OTP Kod Gönderme
             if self.path == "/api/auth/send-code":
                 chat_id = str(data.get("id", "")).strip()
                 name = str(data.get("first_name", "")).strip() or "Trader"
@@ -516,7 +521,6 @@ class WebApiHandler(BaseHTTPRequestHandler):
                 self.wfile.write(json.dumps({"ok": True, "msg": "Kod gönderildi"}).encode("utf-8"))
                 return
 
-            # 2. OTP Kodu Doğrulama & Giriş
             elif self.path == "/api/auth/verify-code":
                 chat_id = str(data.get("id", "")).strip()
                 code = str(data.get("code", "")).strip()
@@ -550,7 +554,6 @@ class WebApiHandler(BaseHTTPRequestHandler):
                 self.wfile.write(json.dumps({"ok": True, "user": user}).encode("utf-8"))
                 return
 
-            # 3. Kullanıcı Ayarlarını Kaydetme
             elif self.path in ["/api/command", "/api/user/save-settings"]:
                 chat_id = str(data.get("chat_id", "")).strip()
                 
@@ -593,7 +596,7 @@ class WebApiHandler(BaseHTTPRequestHandler):
 
 def run_http():
     server = HTTPServer(("0.0.0.0", PORT), WebApiHandler)
-    log(f"🚀 HTTP API Sunucusu port {PORT} üzerinde çalışıyor.")
+    log(f"🚀 HTTP API Sunucusu port {PORT} üzerinde dinliyor.")
     server.serve_forever()
 
 # ----------------------------------------------------
@@ -664,7 +667,6 @@ async def bybit_ws():
                         side = str(trade.get("S", "")).upper()
                         trade_type = "BUY" if side == "BUY" else "SELL"
 
-                        # 24 Saatlik Rapor İstatistiğine Kaydet
                         record_trade_for_stats({
                             "symbol": sym,
                             "price": p,
@@ -674,7 +676,6 @@ async def bybit_ws():
                             "timestamp": trade_time
                         })
 
-                        # Anlık Kullanıcı Eşik Bildirimleri
                         active_users = get_all_active_users()
                         for u in active_users:
                             if total >= u["threshold"]:
@@ -692,10 +693,17 @@ async def bybit_ws():
             log(f"⚠️ WS Hatası: {e}. 2 sn sonra yeniden bağlanılıyor...")
             await asyncio.sleep(2)
 
+def run_ws_loop():
+    loop = asyncio.new_event_loop()
+    asyncio.set_event_loop(loop)
+    loop.run_until_complete(bybit_ws())
+
 if __name__ == "__main__":
     init_db()
-    threading.Thread(target=run_http, daemon=True).start()
+    # Threading ile her görevi bağımsız çalıştır
     threading.Thread(target=telegram_worker, daemon=True).start()
     threading.Thread(target=telegram_poller, daemon=True).start()
     threading.Thread(target=daily_digest_scheduler, daemon=True).start()
-    asyncio.run(bybit_ws())
+    threading.Thread(target=run_ws_loop, daemon=True).start()
+    # Ana thread'i HTTP sunucusuna ver (Render doğrudan buna bağlanır)
+    run_http()
